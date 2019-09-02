@@ -1,0 +1,16 @@
+[package]
+name = "query-rds-data"
+version = "0.1.0"
+authors = ["Bruce Adams <bruce.adams@acm.org>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+quicli = "0.4.0"
+rusoto_core = "0.40"
+rusoto_rds_data = "0.40"
+
+[dependencies.structopt]
+features = ["wrap_help"]
+version = "0.3.0"
