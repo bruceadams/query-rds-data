@@ -64,7 +64,7 @@ fn print_header(result: &SqlStatementResult) {
             }
         }
     }
-    println!("");
+    println!();
 }
 
 fn print_value(value: &Value) {
@@ -118,7 +118,7 @@ fn print_rows(result: &SqlStatementResult) {
                         print_value(&value);
                     }
                 }
-                println!("");
+                println!();
             }
         }
     }
@@ -126,7 +126,7 @@ fn print_rows(result: &SqlStatementResult) {
 
 fn my_cluster(
     requested_db_cluster_identifier: &Option<String>,
-    db_clusters: &Vec<DBCluster>,
+    db_clusters: &[DBCluster],
 ) -> Option<DBCluster> {
     match requested_db_cluster_identifier {
         Some(requested_db_cluster_identifier) => {
@@ -144,12 +144,12 @@ fn my_cluster(
             }
         }
     }
-    return None;
+    None
 }
 
 fn my_secret(
     requested_db_cluster_resource_id: &str,
-    secret_list: &Vec<SecretListEntry>,
+    secret_list: &[SecretListEntry],
 ) -> Option<SecretListEntry> {
     let name_starts_with =
         "rds-db-credentials/".to_string() + requested_db_cluster_resource_id + "/";
@@ -162,7 +162,7 @@ fn my_secret(
             }
         }
     }
-    return the_one;
+    the_one
 }
 
 fn get_arns(
@@ -203,22 +203,22 @@ fn get_arns(
             }
             match secret_list_entry {
                 Some(secret_list_entry) => {
-                    return Ok(MyArns {
+                    Ok(MyArns {
                         aws_secret_store_arn: secret_list_entry.arn.unwrap(),
                         db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
                     })
                 }
-                None => return Err(format_err!("secret not found")),
+                None => Err(format_err!("secret not found")),
             }
         }
         None => {
-            return Err(format_err!(
+            Err(format_err!(
                 // TODO Enhance this error message to list what was found
                 "db_cluster_identifier={:?} not found",
                 requested_db_cluster_identifier
-            ));
+            ))
         }
-    };
+    }
 }
 
 fn main() -> CliResult {
@@ -242,7 +242,7 @@ fn main() -> CliResult {
     // I don't know how to take it apart in a non-tedious way.
     let execute_sql_response = fut.sync()?;
     if let Some(results) = execute_sql_response.sql_statement_results {
-        for ref result in results {
+        for result in &results {
             print_header(result);
             print_rows(result);
         }
