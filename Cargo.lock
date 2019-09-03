@@ -303,6 +303,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "dtoa"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "either"
 version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -888,9 +893,12 @@ dependencies = [
 name = "query-rds-data"
 version = "0.1.0"
 dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "quicli 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_core 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusoto_rds 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_rds_data 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusoto_secretsmanager 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1183,7 +1191,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusoto_rds"
+version = "0.40.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusoto_core 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_urlencoded 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xml-rs 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rusoto_rds_data"
+version = "0.40.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusoto_core 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rusoto_secretsmanager"
 version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
@@ -1310,6 +1343,17 @@ dependencies = [
  "itoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ryu 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "serde_urlencoded"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "dtoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",
+ "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1969,6 +2013,7 @@ dependencies = [
 "checksum crypto-mac 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0999b4ff4d3446d4ddb19a63e9e00c1876e75cd7000d20e57a693b4b3f08d958"
 "checksum digest 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)" = "03b072242a8cbaf9c145665af9d250c59af3b958f83ed6824e13533cf76d5b90"
 "checksum dirs 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "3fd78930633bd1c6e35c4b42b1df7b0cbc6bc191146e512bb3bedf243fcc3901"
+"checksum dtoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "ea57b42383d091c85abcc2706240b94ab2a8fa1fc81c10ff23c4de06e2a90b5e"
 "checksum either 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5527cfe0d098f36e3f8839852688e63c8fff1c90b2b405aef730615f9a7bcf7b"
 "checksum env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)" = "15b0a4d2e39f8420210be8b27eeda28029729e2fd4291019455016c348240c38"
 "checksum exitfailure 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2ff5bd832af37f366c6c194d813a11cd90ac484f124f079294f28e357ae40515"
@@ -2063,7 +2108,9 @@ dependencies = [
 "checksum remove_dir_all 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4a83fa3702a688b9359eccba92d153ac33fd2e8462f9e0e3fdf155239ea7792e"
 "checksum rusoto_core 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dd1a1069ba04874a485528d1602fab4569f2434a5547614428e2cc22b91bfb71"
 "checksum rusoto_credential 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0d6cc3a602f01b9c5a04c8ed4ee281b789c5b2692d93202367c9b99ebc022ed"
+"checksum rusoto_rds 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c18940ea9348408f7472da11b93134ae92a1cad5f28cd401cd3740672dd3ac93"
 "checksum rusoto_rds_data 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7444c082d2f8863f50d10e5926406523bb765f78697af845cb43096be39b0cd1"
+"checksum rusoto_secretsmanager 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bc6c0933203edce5904f46e9f826b1f5fc7d8f003aaf3a16739572ed50c1d011"
 "checksum rust-argon2 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4ca4eaef519b494d1f2848fc602d18816fed808a981aedf4f1f00ceb7c9d32cf"
 "checksum rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
@@ -2080,6 +2127,7 @@ dependencies = [
 "checksum serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)" = "fec2851eb56d010dc9a21b89ca53ee75e6528bab60c11e89d38390904982da9f"
 "checksum serde_derive 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)" = "cb4dc18c61206b08dc98216c98faa0232f4337e1e1b8574551d5bad29ea1b425"
 "checksum serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)" = "051c49229f282f7c6f3813f8286cc1e3323e8051823fce42c7ea80fe13521704"
+"checksum serde_urlencoded 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)" = "642dd69105886af2efd227f75a520ec9b44a820d65bc133a9131f7d229fd165a"
 "checksum sha2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9eb6be24e4c23a84d7184280d2722f7f2731fcdd4a9d886efbfe4413e4847ea0"
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 "checksum signal-hook 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4f61c4d59f3aaa9f61bba6450a9b80ba48362fd7d651689e7a10c453b1f6dc68"
