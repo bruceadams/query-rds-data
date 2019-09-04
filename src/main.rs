@@ -168,6 +168,7 @@ fn my_secret(
 }
 
 fn get_arns(
+    runtime: &mut Runtime,
     region: &Region,
     requested_db_cluster_identifier: &Option<String>,
 ) -> Result<MyArns, Error> {
@@ -192,41 +193,32 @@ fn get_arns(
         .list_secrets(list_secrets_request)
         .map_err(Error::from);
 
-    let mut runtime = match Runtime::new() {
-        Ok(r) => r,
-        Err(e) => return Err(Error::from(e))
-    };
-
-    match runtime.block_on(fut1.join(fut2)) {
-        Err(e) => Err(e),
-        Ok((db_cluster_message, list_secrets_response)) => {
-            let mut db_cluster = None;
-            if let Some(db_clusters) = db_cluster_message.db_clusters {
-                db_cluster = my_cluster(requested_db_cluster_identifier, &db_clusters);
+    let (db_cluster_message, list_secrets_response) = runtime.block_on(fut1.join(fut2))?;
+    let mut db_cluster = None;
+    if let Some(db_clusters) = db_cluster_message.db_clusters {
+        db_cluster = my_cluster(requested_db_cluster_identifier, &db_clusters);
+    }
+    match db_cluster {
+        Some(db_cluster) => {
+            let mut secret_list_entry = None;
+            if let Some(secret_list) = list_secrets_response.secret_list {
+                secret_list_entry =
+                    my_secret(&db_cluster.db_cluster_resource_id.unwrap(), &secret_list);
             }
-            match db_cluster {
-                Some(db_cluster) => {
-                    let mut secret_list_entry = None;
-                    if let Some(secret_list) = list_secrets_response.secret_list {
-                        secret_list_entry =
-                            my_secret(&db_cluster.db_cluster_resource_id.unwrap(), &secret_list);
-                    }
-                    match secret_list_entry {
-                        Some(secret_list_entry) => Ok(MyArns {
-                            aws_secret_store_arn: secret_list_entry.arn.unwrap(),
-                            db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
-                        }),
-                        None => Err(format_err!("secret not found")),
-                    }
-                }
-                None => {
-                    Err(format_err!(
-                        // TODO Enhance this error message to list what was found
-                        "db_cluster_identifier={:?} not found",
-                        requested_db_cluster_identifier
-                    ))
-                }
+            match secret_list_entry {
+                Some(secret_list_entry) => Ok(MyArns {
+                    aws_secret_store_arn: secret_list_entry.arn.unwrap(),
+                    db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
+                }),
+                None => Err(format_err!("secret not found")),
             }
+        }
+        None => {
+            Err(format_err!(
+                // TODO Enhance this error message to list what was found
+                "db_cluster_identifier={:?} not found",
+                requested_db_cluster_identifier
+            ))
         }
     }
 }
@@ -237,7 +229,8 @@ fn main() -> CliResult {
     let region = Region::from_str(&args.aws_region)?;
     let rds_data_client = RdsDataClient::new(region.clone());
 
-    let my_arns = get_arns(&region, &args.db_cluster_identifier)?;
+    let mut runtime = Runtime::new()?;
+    let my_arns = get_arns(&mut runtime, &region, &args.db_cluster_identifier)?;
 
     let execute_sql_request = ExecuteSqlRequest {
         aws_secret_store_arn: my_arns.aws_secret_store_arn,
@@ -250,7 +243,7 @@ fn main() -> CliResult {
     let fut = rds_data_client.execute_sql(execute_sql_request);
     // The result that comes back is fairly intense.
     // I don't know how to take it apart in a non-tedious way.
-    let execute_sql_response = fut.sync()?;
+    let execute_sql_response = runtime.block_on(fut)?;
     if let Some(results) = execute_sql_response.sql_statement_results {
         for result in &results {
             print_header(result);
