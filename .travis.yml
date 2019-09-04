@@ -24,16 +24,19 @@ before_deploy: "./release-build.sh"
 
 deploy:
   - provider: releases
+    api_key:
+      secure: IqX/K2KlO6uGjTY5vvVv5N2AypXQNqJ6i6DLSFzc3v6twIuFP+9K//NPy3VMtKExt6Iol6xDVitg4/lA9EmcxXMostKFM17XF9UEE8ipplnqPWUCNGh98BeD+Wlfl2Yn1H8GRgp4F5cOkmwuDOLEcYGTqWzokwzzHel83b8Bmw8npaa5Fu7343ybBoN+1AY/P9txNMCDC/5zB9+CaCBeXeLknOsutiqftid9kbizt8jOPuCDLRV+Cv4hxkvvNGNe9f40XluecJLy9eC4F6euTHXaxryOD9U7eeCMAnSGlrduO1p/aS/3aLB3WnCuo1cH8UM7fwWMGkwHFwPdkYfZKlSHLchYAq7BFj3XDCeM05XsWZNKp/KWH5hp+N+UiZnWjvIHK3lQBhXC6GEd3lFijxS6cFXvAmoVb3X1o0NRoXTJsZ+4O8/Cqwi5i/z5zQ7DKYH4icylNJ8dlAG5KsoRgn6mO0KNmFlFAGAVtWti4/Z0fURVm3NqvQ9wF6in2aESMGmDmY95lpzzny62AnEbLQRFHtYZyDpqCuh71zM5/tT7XCnkmEaIO76C4nIEycddzPi2Em0dExGD0FZ6+6y9vFaAxoHiaj59q3HLizAdq4zH2zUifc+44UUtc9MgllUJ/onjJuMc3V12EoFlh5c05a+2k2IV6fRapH0Ydp21fc0=
     file_glob: true
-    file: target/query-rds-data.*
-    skip_cleanup: true
+    file: query-rds-data.*
     on:
       repo: bruceadams/query-rds-data
       rust: stable
       tags: true
   - provider: cargo
     on:
-      repo: bruceadams/query-rds-data
       condition: $TRAVIS_OS_NAME == linux
+      repo: bruceadams/query-rds-data
       rust: stable
       tags: true
+    token:
+      secure: M+kTb5ZRIvKqiA6KYlimMU7cMHGSzuSFe0t+M/zu5hxIwZsPG2vwuvTBZnF8lmM8XJnKOB/AfbfYKrsmdAaSR/TGesw1M6u/iWufexe1Xp3gkdiQdatu5RROY28W1LYBeULNbcuRxqAo2vMRVi/pmNgX36HlcLEVQBB73w7uU9VkTMvrtEmGMUflgUJ9X2Vzk4DmAo5Hi7RLOyQZC4pDDo2eiHxSSKHGVdwINNjSKA3kHLeRM+d/8zt1KQ7Yrlz8sQDhSQT0B7ngFetVLAh2ma4f3nWmErqc7nWOwIFUDD6bxsJNSzIini1O/WvH5NtTQ/CGuB00LVJMqIwYjSAM7RKVcXRYw7L72Ql+Xkobz9rNVrZ4rEv1rkt9f/heYwMurgjAq7fq6J4x5KHgEQxl/F6cXC5y7zrydRFQdSzs+IhNMi/nl7HoUG/NVA5rzmFbebY10IF+plyfJv/sB2CJ73VAvA0CSoHloIXUkMeEFil8DtB5a2tLHLbh16UloRpSWynOCZYNzSRPIqQ2yU8gz8n9p+fT5SlffkAg/L7vB/It9zbZykAqoHzl44PaOIbmPSMuOkWeH02VFSi7AmE6W2gkFRXEnOXRt3zGa6RHCcTGaj90FBFuMIgSvTjSSHjpA5mbVzvl/GRh2qye+LKdTOVUlDIjGqBKrcWoohYoDGI=
