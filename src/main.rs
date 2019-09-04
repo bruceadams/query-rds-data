@@ -194,17 +194,18 @@ fn get_arns(
         .map_err(Error::from);
 
     let (db_cluster_message, list_secrets_response) = runtime.block_on(fut1.join(fut2))?;
-    let mut db_cluster = None;
-    if let Some(db_clusters) = db_cluster_message.db_clusters {
-        db_cluster = my_cluster(requested_db_cluster_identifier, &db_clusters);
-    }
+    let db_cluster = match db_cluster_message.db_clusters {
+        Some(db_clusters) => my_cluster(requested_db_cluster_identifier, &db_clusters),
+        None => None,
+    };
     match db_cluster {
         Some(db_cluster) => {
-            let mut secret_list_entry = None;
-            if let Some(secret_list) = list_secrets_response.secret_list {
-                secret_list_entry =
-                    my_secret(&db_cluster.db_cluster_resource_id.unwrap(), &secret_list);
-            }
+            let secret_list_entry = match list_secrets_response.secret_list {
+                Some(secret_list) => {
+                    my_secret(&db_cluster.db_cluster_resource_id.unwrap(), &secret_list)
+                }
+                None => None,
+            };
             match secret_list_entry {
                 Some(secret_list_entry) => Ok(MyArns {
                     aws_secret_store_arn: secret_list_entry.arn.unwrap(),
