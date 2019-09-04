@@ -15,6 +15,11 @@ matrix:
     - rust: nightly
   fast_finish: true
 
+script:
+  - cargo build  --verbose
+  - cargo clippy --verbose
+  - cargo test   --verbose
+
 before_deploy: "./release-build.sh"
 
 deploy:
