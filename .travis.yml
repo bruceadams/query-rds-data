@@ -1,0 +1,34 @@
+language: rust
+
+os:
+  - linux
+  - osx
+  - windows
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
+
+before_deploy: "./release-build.sh"
+
+deploy:
+  - provider: releases
+    file_glob: true
+    file: target/query-rds-data.*
+    skip_cleanup: true
+    on:
+      repo: bruceadams/query-rds-data
+      rust: stable
+      tags: true
+  - provider: cargo
+    on:
+      repo: bruceadams/query-rds-data
+      condition: $TRAVIS_OS_NAME == linux
+      rust: stable
+      tags: true
