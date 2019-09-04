@@ -1,4 +1,5 @@
-// use futures::{future, prelude::*};
+use futures::prelude::*;
+
 use quicli::prelude::*;
 use rusoto_core::region::Region;
 use rusoto_rds::{DBCluster, DescribeDBClustersMessage, Rds, RdsClient};
@@ -9,6 +10,7 @@ use rusoto_secretsmanager::{
 use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
+use tokio::runtime::Runtime;
 
 /// Query an Amazon RDS database
 #[derive(Debug, StructOpt)]
@@ -183,40 +185,48 @@ fn get_arns(
     let rds_client = RdsClient::new(region.clone());
     let secrets_manager_client = SecretsManagerClient::new(region.clone());
 
-    let fut1 = rds_client.describe_db_clusters(describe_db_clusters_message);
-    let fut2 = secrets_manager_client.list_secrets(list_secrets_request);
+    let fut1 = rds_client
+        .describe_db_clusters(describe_db_clusters_message)
+        .map_err(Error::from);
+    let fut2 = secrets_manager_client
+        .list_secrets(list_secrets_request)
+        .map_err(Error::from);
 
-    // FIXME run these futures concurrently.
-    let db_cluster_message = fut1.sync()?;
-    let list_secrets_response = fut2.sync()?;
+    let mut runtime = match Runtime::new() {
+        Ok(r) => r,
+        Err(e) => return Err(Error::from(e))
+    };
 
-    let mut db_cluster = None;
-    if let Some(db_clusters) = db_cluster_message.db_clusters {
-        db_cluster = my_cluster(requested_db_cluster_identifier, &db_clusters);
-    }
-    match db_cluster {
-        Some(db_cluster) => {
-            let mut secret_list_entry = None;
-            if let Some(secret_list) = list_secrets_response.secret_list {
-                secret_list_entry =
-                    my_secret(&db_cluster.db_cluster_resource_id.unwrap(), &secret_list);
+    match runtime.block_on(fut1.join(fut2)) {
+        Err(e) => Err(e),
+        Ok((db_cluster_message, list_secrets_response)) => {
+            let mut db_cluster = None;
+            if let Some(db_clusters) = db_cluster_message.db_clusters {
+                db_cluster = my_cluster(requested_db_cluster_identifier, &db_clusters);
             }
-            match secret_list_entry {
-                Some(secret_list_entry) => {
-                    Ok(MyArns {
-                        aws_secret_store_arn: secret_list_entry.arn.unwrap(),
-                        db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
-                    })
+            match db_cluster {
+                Some(db_cluster) => {
+                    let mut secret_list_entry = None;
+                    if let Some(secret_list) = list_secrets_response.secret_list {
+                        secret_list_entry =
+                            my_secret(&db_cluster.db_cluster_resource_id.unwrap(), &secret_list);
+                    }
+                    match secret_list_entry {
+                        Some(secret_list_entry) => Ok(MyArns {
+                            aws_secret_store_arn: secret_list_entry.arn.unwrap(),
+                            db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
+                        }),
+                        None => Err(format_err!("secret not found")),
+                    }
                 }
-                None => Err(format_err!("secret not found")),
+                None => {
+                    Err(format_err!(
+                        // TODO Enhance this error message to list what was found
+                        "db_cluster_identifier={:?} not found",
+                        requested_db_cluster_identifier
+                    ))
+                }
             }
-        }
-        None => {
-            Err(format_err!(
-                // TODO Enhance this error message to list what was found
-                "db_cluster_identifier={:?} not found",
-                requested_db_cluster_identifier
-            ))
         }
     }
 }

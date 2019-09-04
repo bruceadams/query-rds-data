@@ -13,6 +13,7 @@ rusoto_core = "0.40.0"
 rusoto_rds = "0.40.0"
 rusoto_rds_data = "0.40.0"
 rusoto_secretsmanager =  "0.40.0"
+tokio = "0.1.22"
 
 [dependencies.structopt]
 features = ["wrap_help"]

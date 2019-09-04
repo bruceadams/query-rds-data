@@ -900,6 +900,7 @@ dependencies = [
  "rusoto_rds_data 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_secretsmanager 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
