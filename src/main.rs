@@ -9,11 +9,12 @@ use rusoto_secretsmanager::{
 };
 use std::env;
 use std::str::FromStr;
-use structopt::StructOpt;
+use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use tokio::runtime::Runtime;
 
 /// Query an Amazon RDS database
 #[derive(Debug, StructOpt)]
+#[structopt(global_settings(&[ColoredHelp]))]
 struct MyArgs {
     /// AWS source profile to use. This name references an entry in ~/.aws/credentials
     #[structopt(env = "AWS_PROFILE", long = "aws-profile", short = "p")]
