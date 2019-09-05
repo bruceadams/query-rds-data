@@ -1,6 +1,5 @@
 # Query AWS RDS Data from the command line
-
-
+[![Build Status](https://travis-ci.com/bruceadams/query-rds-data.svg?branch=master)](https://travis-ci.com/bruceadams/query-rds-data)
 
 ```bash
 $ cargo build
