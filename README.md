@@ -5,7 +5,7 @@
 $ cargo build
 ...
 $ target/debug/query-rds-data --help
-query-rds-data 0.3.0
+query-rds-data 0.3.2
 Query an Amazon RDS database
 
 USAGE:
