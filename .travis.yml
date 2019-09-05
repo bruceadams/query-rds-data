@@ -31,6 +31,7 @@ deploy:
       secure: H/bjRJTOztYMxCbvkWxJXGLRYAxN6118GUCKdbVBqxWvQNpQrVuTQVZnYjJuGETjHmCdhU+L9ekoKZ2upoi+sclccK80xpfDvOZ1jvZeKHjDS3PZrezQ4Y/FLzv/h+COn7tyCFjWXMNNuI+xy8j1EVIPoVHniAcAQRRJFP8lrI55X1/ePSHLN0Hh5SLWSYKR7M2kUkjAaRfWKwCTzmFxGNqKue1HanRDrY23OfQYzifWG64VP3BjacR5z2VEzD2/jdbRj2Pl3DVGtcQ9FCdTlPBC4TvwZMzqCVmxdRh9md/bgYZ5zmJ1OOkVf2CBIVTu8X2VAVjbWbBwLCuHYVdl0FwKG6NfKJt+pZGkKPqInLc3/LJJuf4cF1ki1zRZhlkuu16vLEaTpzK/od9aJ6Vaf6iATPQcSBb7Bf3aXYYxPxCgKpQNLMwftWZ6TZI+LZF+RQc1jW9nms/JHRh6zSqbry1woUk02ZtCAHD4Xg9e9FDJv7ZM/v5DUgS3n795P9AXVJvSLQEcn83BoKOyROVm2uybrQw57U/lAxAWrk2sqay5jAOO1y0LPYo47/LKACxOSNATNPEq+Fz5QRVfHY1plHpi0nGMK8I9XhfTfPtKdnOdmnKuMLdi8lyn5mVqcJVKqTb1ZZp1SnUFE4myHjd9nNExdrPfu2FW0DH+7bH6r30=
     file_glob: true
     file: query-rds-data.*
+    skip_cleanup: true
     on:
       repo: bruceadams/query-rds-data
       rust: stable
