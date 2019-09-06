@@ -16,8 +16,12 @@ repository = "https://github.com/bruceadams/query-rds-data"
 travis-ci = { repository = "bruceadams/query-rds-data" }
 
 [dependencies]
+exitfailure = "0.5.1"
+failure = "0.1.5"
+failure_derive = "0.1.5"
 futures = "0.1.28"
-quicli = "0.4.0"
+log = "0.4.8"
+stderrlog = "0.4.1"
 rusoto_core = "0.40.0"
 rusoto_rds = "0.40.0"
 rusoto_rds_data = "0.40.0"

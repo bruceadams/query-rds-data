@@ -1,6 +1,7 @@
+use exitfailure::ExitFailure;
+use failure::{format_err, Error};
 use futures::prelude::*;
-
-use quicli::prelude::*;
+use log::{info, warn};
 use rusoto_core::region::Region;
 use rusoto_rds::{DBCluster, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{ExecuteSqlRequest, RdsData, RdsDataClient, SqlStatementResult, Value};
@@ -18,7 +19,7 @@ use tokio::runtime::Runtime;
 struct MyArgs {
     /// AWS source profile to use. This name references an entry in ~/.aws/credentials
     #[structopt(env = "AWS_PROFILE", long = "aws-profile", short = "p")]
-    aws_profile: String,
+    profile: String,
 
     /// AWS region to target.
     #[structopt(
@@ -27,14 +28,24 @@ struct MyArgs {
         long = "aws-region",
         short = "r"
     )]
-    aws_region: String,
+    region: String,
 
     /// RDS database identifier.
     #[structopt(long = "db-cluster-identifier", short = "i")]
-    db_cluster_identifier: Option<String>,
+    db_id: Option<String>,
 
     /// SQL query.
     query: String,
+
+    /// Silence all output
+    #[structopt(short = "q", long = "quiet")]
+    quiet: bool,
+    /// Verbose mode (-v, -vv, -vvv, etc)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    verbose: usize,
+    /// Timestamp (sec, ms, ns, none)
+    #[structopt(short = "t", long = "timestamp")]
+    ts: Option<stderrlog::Timestamp>,
 }
 
 struct MyArns {
@@ -186,7 +197,8 @@ fn get_arns(
 
     let rds_client = RdsClient::new(region.clone());
     let secrets_manager_client = SecretsManagerClient::new(region.clone());
-
+    info!("{:?}", describe_db_clusters_message);
+    info!("{:?}", list_secrets_request);
     let fut1 = rds_client
         .describe_db_clusters(describe_db_clusters_message)
         .map_err(Error::from);
@@ -195,6 +207,8 @@ fn get_arns(
         .map_err(Error::from);
 
     let (db_cluster_message, list_secrets_response) = runtime.block_on(fut1.join(fut2))?;
+    info!("{:?}", db_cluster_message);
+    info!("{:?}", list_secrets_response);
     let db_cluster = match db_cluster_message.db_clusters {
         Some(db_clusters) => my_cluster(requested_db_cluster_identifier, &db_clusters),
         None => None,
@@ -225,14 +239,19 @@ fn get_arns(
     }
 }
 
-fn main() -> CliResult {
+fn main() -> Result<(), ExitFailure> {
     let args = MyArgs::from_args();
-    env::set_var("AWS_PROFILE", args.aws_profile);
-    let region = Region::from_str(&args.aws_region)?;
+    stderrlog::new()
+        .quiet(args.quiet)
+        .verbosity(args.verbose)
+        .timestamp(args.ts.unwrap_or(stderrlog::Timestamp::Off))
+        .init()?;
+    env::set_var("AWS_PROFILE", args.profile);
+    let region = Region::from_str(&args.region)?;
     let rds_data_client = RdsDataClient::new(region.clone());
 
     let mut runtime = Runtime::new()?;
-    let my_arns = get_arns(&mut runtime, &region, &args.db_cluster_identifier)?;
+    let my_arns = get_arns(&mut runtime, &region, &args.db_id)?;
 
     let execute_sql_request = ExecuteSqlRequest {
         aws_secret_store_arn: my_arns.aws_secret_store_arn,
@@ -242,12 +261,15 @@ fn main() -> CliResult {
         sql_statements: args.query,
     };
 
+    info!("{:?}", execute_sql_request);
     let fut = rds_data_client.execute_sql(execute_sql_request);
     // The result that comes back is fairly intense.
     // I don't know how to take it apart in a non-tedious way.
     let execute_sql_response = runtime.block_on(fut)?;
+    info!("{:?}", execute_sql_response);
     if let Some(results) = execute_sql_response.sql_statement_results {
         for result in &results {
+            warn!("number_of_records_updated: {}", result.number_of_records_updated.unwrap_or(-1));
             print_header(result);
             print_rows(result);
         }
