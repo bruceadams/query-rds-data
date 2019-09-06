@@ -1,9 +1,9 @@
 # Query AWS RDS Data from the command line
-[![Build Status](https://travis-ci.com/bruceadams/query-rds-data.svg?branch=master)](https://travis-ci.com/bruceadams/query-rds-data)
+[![Build Status](https://img.shields.io/travis/com/bruceadams/query-rds-data?logo=travis)](https://travis-ci.com/bruceadams/query-rds-data)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v1.4%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
-[![Apache License](https://img.shields.io/github/license/bruceadams/query-rds-data)](LICENSE)
-[![Github Release](https://img.shields.io/github/v/release/bruceadams/query-rds-data)](https://github.com/bruceadams/query-rds-data/releases)
-[![Crates.io](https://img.shields.io/crates/v/query-rds-data)](https://crates.io/crates/query-rds-data)
+[![Apache License](https://img.shields.io/github/license/bruceadams/query-rds-data?logo=apache)](LICENSE)
+[![Github Release](https://img.shields.io/github/v/release/bruceadams/query-rds-data?logo=github)](https://github.com/bruceadams/query-rds-data/releases)
+[![Crates.io](https://img.shields.io/crates/v/query-rds-data?logo=rust)](https://crates.io/crates/query-rds-data)
 
 ## Goal
 
@@ -43,7 +43,6 @@ FLAGS:
 OPTIONS:
     -i, --db-cluster-identifier <db-id>
             RDS database identifier.
-
     -p, --aws-profile <profile>
             AWS source profile to use. This name references
             an entry in ~/.aws/credentials [env:
@@ -53,7 +52,6 @@ OPTIONS:
             [default: us-east-1]
     -t, --timestamp <ts>
             Timestamp (sec, ms, ns, none)
-
 
 ARGS:
     <query>    SQL query.
