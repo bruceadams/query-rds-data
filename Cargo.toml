@@ -19,7 +19,7 @@ travis-ci = { repository = "bruceadams/query-rds-data" }
 exitfailure = "0.5.1"
 failure = "0.1.5"
 failure_derive = "0.1.5"
-futures = "0.1.28"
+futures = "0.1.29"
 log = "0.4.8"
 stderrlog = "0.4.1"
 rusoto_core = "0.40.0"
