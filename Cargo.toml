@@ -1,6 +1,6 @@
 [package]
 name = "query-rds-data"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Bruce Adams <bruce.adams@acm.org>"]
 edition = "2018"
 
