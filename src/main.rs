@@ -187,6 +187,7 @@ fn get_arns(
     let describe_db_clusters_message = DescribeDBClustersMessage {
         db_cluster_identifier: None,
         filters: None,
+        include_shared: None,
         marker: None,
         max_records: None,
     };
