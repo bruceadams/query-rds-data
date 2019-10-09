@@ -886,7 +886,7 @@ dependencies = [
  "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusoto_core 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusoto_core 0.41.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_rds 0.41.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_rds_data 0.41.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_secretsmanager 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
