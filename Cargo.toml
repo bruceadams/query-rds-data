@@ -17,7 +17,7 @@ travis-ci = { repository = "bruceadams/query-rds-data" }
 
 [dependencies]
 exitfailure = "0.5.1"
-failure = "0.1.5"
+failure = "0.1.6"
 failure_derive = "0.1.6"
 futures = "0.1.29"
 log = "0.4.8"
