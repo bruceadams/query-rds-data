@@ -73,87 +73,85 @@ struct MyArns {
 
 /// Print out the name for each column, comma separated.
 /// This will misbehave for weird output data.
-fn print_header(result: &SqlStatementResult) {
-    let mut first = true;
+fn format_header(result: &SqlStatementResult) -> Vec<String> {
+    let mut vec: Vec<String> = vec![];
     // This seems pretty crazed...
     if let Some(ref result_frame) = result.result_frame {
         if let Some(ref result_set_metadata) = result_frame.result_set_metadata {
             if let Some(ref column_metadata) = result_set_metadata.column_metadata {
-                for column in column_metadata {
-                    if first {
-                        first = false;
-                    } else {
-                        print!(",");
-                    }
-                    if let Some(ref label) = column.label {
-                        print!("{}", label);
-                    } else if let Some(ref name) = column.name {
-                        print!("{}", name);
-                    } else {
-                        print!("?");
-                    }
-                }
+                vec = column_metadata
+                    .iter()
+                    .map(|column| {
+                        if let Some(ref label) = column.label {
+                            label
+                        } else if let Some(ref name) = column.name {
+                            name
+                        } else {
+                            "?"
+                        }
+                        .to_owned()
+                    })
+                    .collect();
             }
         }
-    }
-    println!();
+    };
+    vec
 }
 
-fn print_value(value: &Value) {
+fn format_value(value: &Value) -> String {
+    let mut string = String::new();
     if let Some(ref array_values) = value.array_values {
-        print!("{:?}", array_values);
+        string.push_str(&format!("{:?}", array_values));
     };
     if let Some(ref big_int_value) = value.big_int_value {
-        print!("{:?}", big_int_value);
+        string.push_str(&format!("{:?}", big_int_value));
     };
     if let Some(ref bit_value) = value.bit_value {
-        print!("{:?}", bit_value);
+        string.push_str(&format!("{:?}", bit_value));
     };
     if let Some(ref blob_value) = value.blob_value {
-        print!("{:?}", blob_value);
+        string.push_str(&format!("{:?}", blob_value));
     };
     if let Some(ref double_value) = value.double_value {
-        print!("{:?}", double_value);
+        string.push_str(&format!("{:?}", double_value));
     };
     if let Some(ref int_value) = value.int_value {
-        print!("{:?}", int_value);
+        string.push_str(&format!("{:?}", int_value));
     };
     if let Some(ref _is_null) = value.is_null {
-        print!("NULL");
+        string.push_str("NULL");
     };
     if let Some(ref real_value) = value.real_value {
-        print!("{:?}", real_value);
+        string.push_str(&format!("{:?}", real_value));
     };
     if let Some(ref string_value) = value.string_value {
-        print!("{:?}", string_value);
+        string.push_str(&string_value);
     };
     if let Some(ref struct_value) = value.struct_value {
-        print!("{:?}", struct_value);
+        string.push_str(&format!("{:?}", struct_value));
     };
+    string
 }
 
-/// Print out the name for each column, comma separated.
-/// This will misbehave for weird output data.
-fn print_rows(result: &SqlStatementResult) {
+/// Return a vector of vectors of strings
+fn format_rows(result: &SqlStatementResult) -> Vec<Vec<String>> {
     // This seems pretty crazed...
+    let mut vec_vec: Vec<Vec<String>> = vec![];
     if let Some(ref result_frame) = result.result_frame {
         if let Some(ref records) = result_frame.records {
-            for record in records {
-                let mut first = true;
-                if let Some(ref values) = record.values {
-                    for value in values {
-                        if first {
-                            first = false;
-                        } else {
-                            print!(",");
-                        }
-                        print_value(&value);
-                    }
-                }
-                println!();
-            }
+            vec_vec = records
+                .iter()
+                .map(|record| {
+                    let mut inner_vec: Vec<String> = vec![];
+                    if let Some(ref values) = record.values {
+                        inner_vec = values.iter().map(|value| format_value(&value)).collect();
+                    };
+                    inner_vec
+                })
+                .collect();
         }
-    }
+    };
+    vec_vec
 }
 
 fn my_cluster(
@@ -285,14 +283,17 @@ fn main() -> Result<(), ExitFailure> {
     // I don't know how to take it apart in a non-tedious way.
     let execute_sql_response = runtime.block_on(fut)?;
     info!("{:?}", execute_sql_response);
+    let mut wtr = csv::Writer::from_writer(std::io::stdout());
     if let Some(results) = execute_sql_response.sql_statement_results {
         for result in &results {
             warn!(
                 "number_of_records_updated: {}",
                 result.number_of_records_updated.unwrap_or(-1)
             );
-            print_header(result);
-            print_rows(result);
+            wtr.write_record(&format_header(result))?;
+            for row in format_rows(result).iter() {
+                wtr.write_record(row)?;
+            }
         }
     };
     Ok(())
