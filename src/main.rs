@@ -4,7 +4,10 @@ use log::{info, warn};
 use rusoto_core::region::Region;
 use rusoto_core::RusotoError;
 use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
-use rusoto_rds_data::{ExecuteSqlRequest, RdsData, RdsDataClient, SqlStatementResult, Value};
+use rusoto_rds_data::{
+    ExecuteSqlRequest, RdsData, RdsDataClient, ResultFrame, ResultSetMetadata, SqlStatementResult,
+    Value,
+};
 use rusoto_secretsmanager::{
     ListSecretsError, ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
 };
@@ -71,33 +74,37 @@ struct MyArns {
     db_cluster_or_instance_arn: String,
 }
 
-/// Print out the name for each column, comma separated.
-/// This will misbehave for weird output data.
-fn format_header(result: &SqlStatementResult) -> Vec<String> {
-    let mut vec: Vec<String> = vec![];
+/// Extract a name for each column
+fn format_header<'a>(result: &'a SqlStatementResult) -> impl Iterator<Item = &'a str> {
     // This seems pretty crazed...
-    if let Some(ref result_frame) = result.result_frame {
-        if let Some(ref result_set_metadata) = result_frame.result_set_metadata {
-            if let Some(ref column_metadata) = result_set_metadata.column_metadata {
-                vec = column_metadata
-                    .iter()
-                    .map(|column| {
-                        if let Some(ref label) = column.label {
-                            label
-                        } else if let Some(ref name) = column.name {
-                            name
-                        } else {
-                            "?"
-                        }
-                        .to_owned()
-                    })
-                    .collect();
+    result
+        .result_frame
+        .as_ref()
+        .unwrap_or(&ResultFrame {
+            records: None,
+            result_set_metadata: None,
+        })
+        .result_set_metadata
+        .as_ref()
+        .unwrap_or(&ResultSetMetadata {
+            column_count: None,
+            column_metadata: None,
+        })
+        .column_metadata
+        .as_ref()
+        .map_or(&[][..], |x| &**x)
+        .iter()
+        .map::<&'a str, _>(|column| {
+            if let Some(ref label) = column.label {
+                label
+            } else if let Some(ref name) = column.name {
+                name
+            } else {
+                "?"
             }
-        }
-    };
-    vec
+        })
 }
-
+///
 fn format_value(value: &Value) -> String {
     let mut string = String::new();
     if let Some(ref array_values) = value.array_values {
@@ -133,25 +140,27 @@ fn format_value(value: &Value) -> String {
     string
 }
 
-/// Return a vector of vectors of strings
-fn format_rows(result: &SqlStatementResult) -> Vec<Vec<String>> {
+fn one_row(values: &[Value]) -> impl Iterator<Item = String> + '_ {
+    values.iter().map(|value| format_value(&value))
+}
+
+/// Return an iterator of iterators of string slices
+fn format_rows(
+    result: &SqlStatementResult,
+) -> impl Iterator<Item = impl Iterator<Item = String> + '_> {
     // This seems pretty crazed...
-    let mut vec_vec: Vec<Vec<String>> = vec![];
-    if let Some(ref result_frame) = result.result_frame {
-        if let Some(ref records) = result_frame.records {
-            vec_vec = records
-                .iter()
-                .map(|record| {
-                    let mut inner_vec: Vec<String> = vec![];
-                    if let Some(ref values) = record.values {
-                        inner_vec = values.iter().map(|value| format_value(&value)).collect();
-                    };
-                    inner_vec
-                })
-                .collect();
-        }
-    };
-    vec_vec
+    result
+        .result_frame
+        .as_ref()
+        .unwrap_or(&ResultFrame {
+            records: None,
+            result_set_metadata: None,
+        })
+        .records
+        .as_ref()
+        .map_or(&[][..], |x| &**x)
+        .iter()
+        .map(|record| one_row(record.values.as_ref().map_or(&[][..], |x| &**x)))
 }
 
 fn my_cluster(
@@ -290,8 +299,8 @@ fn main() -> Result<(), ExitFailure> {
                 "number_of_records_updated: {}",
                 result.number_of_records_updated.unwrap_or(-1)
             );
-            wtr.write_record(&format_header(result))?;
-            for row in format_rows(result).iter() {
+            wtr.write_record(format_header(result))?;
+            for row in format_rows(result) {
                 wtr.write_record(row)?;
             }
         }
