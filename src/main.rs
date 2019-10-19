@@ -1,13 +1,14 @@
 use exitfailure::ExitFailure;
-use failure::{format_err, Error};
 use futures::prelude::*;
 use log::{info, warn};
 use rusoto_core::region::Region;
-use rusoto_rds::{DBCluster, DescribeDBClustersMessage, Rds, RdsClient};
+use rusoto_core::RusotoError;
+use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{ExecuteSqlRequest, RdsData, RdsDataClient, SqlStatementResult, Value};
 use rusoto_secretsmanager::{
-    ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
+    ListSecretsError, ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
 };
+use snafu::Snafu;
 use std::env;
 use std::str::FromStr;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
@@ -46,6 +47,23 @@ struct MyArgs {
     /// Timestamp (sec, ms, ns, none)
     #[structopt(short = "t", long = "timestamp")]
     ts: Option<stderrlog::Timestamp>,
+}
+
+#[derive(Debug, Snafu)]
+enum Error {
+    // DescribeDBClustersError, ListSecretsError
+    #[snafu(display("Failed to find cluster: {}", source))]
+    DBClusterLookup {
+        source: RusotoError<DescribeDBClustersError>,
+    },
+    #[snafu(display("Failed to find secret: {}", source))]
+    SecretLookup {
+        source: RusotoError<ListSecretsError>,
+    },
+    #[snafu(display("Failed to find secret"))]
+    SecretNotFound {},
+    #[snafu(display("Failed to find DB {}", db_cluster_identifier))]
+    DBNotFound { db_cluster_identifier: String },
 }
 
 struct MyArns {
@@ -202,10 +220,10 @@ fn get_arns(
     info!("{:?}", list_secrets_request);
     let fut1 = rds_client
         .describe_db_clusters(describe_db_clusters_message)
-        .map_err(Error::from);
+        .map_err(|e| Error::DBClusterLookup { source: e });
     let fut2 = secrets_manager_client
         .list_secrets(list_secrets_request)
-        .map_err(Error::from);
+        .map_err(|e| Error::SecretLookup { source: e });
 
     let (db_cluster_message, list_secrets_response) = runtime.block_on(fut1.join(fut2))?;
     info!("{:?}", db_cluster_message);
@@ -227,15 +245,14 @@ fn get_arns(
                     aws_secret_store_arn: secret_list_entry.arn.unwrap(),
                     db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
                 }),
-                None => Err(format_err!("secret not found")),
+                None => Err(Error::SecretNotFound {}),
             }
         }
         None => {
-            Err(format_err!(
-                // TODO Enhance this error message to list what was found
-                "db_cluster_identifier={:?} not found",
-                requested_db_cluster_identifier
-            ))
+            // TODO Enhance this error message to list what was found
+            Err(Error::DBNotFound {
+                db_cluster_identifier: requested_db_cluster_identifier.clone().unwrap_or_default(),
+            })
         }
     }
 }
@@ -270,7 +287,10 @@ fn main() -> Result<(), ExitFailure> {
     info!("{:?}", execute_sql_response);
     if let Some(results) = execute_sql_response.sql_statement_results {
         for result in &results {
-            warn!("number_of_records_updated: {}", result.number_of_records_updated.unwrap_or(-1));
+            warn!(
+                "number_of_records_updated: {}",
+                result.number_of_records_updated.unwrap_or(-1)
+            );
             print_header(result);
             print_rows(result);
         }
