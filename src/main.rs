@@ -13,9 +13,20 @@ use rusoto_secretsmanager::{
 };
 use snafu::Snafu;
 use std::env;
+use std::io::stdout;
 use std::str::FromStr;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use tokio::runtime::Runtime;
+
+const EMPTY_RESULT_FRAME: ResultFrame = ResultFrame {
+    records: None,
+    result_set_metadata: None,
+};
+
+const EMPTY_RESULT_SET_METADATA: ResultSetMetadata = ResultSetMetadata {
+    column_count: None,
+    column_metadata: None,
+};
 
 /// Query an Amazon RDS database
 #[derive(Debug, StructOpt)]
@@ -80,16 +91,10 @@ fn format_header<'a>(result: &'a SqlStatementResult) -> impl Iterator<Item = &'a
     result
         .result_frame
         .as_ref()
-        .unwrap_or(&ResultFrame {
-            records: None,
-            result_set_metadata: None,
-        })
+        .unwrap_or(&EMPTY_RESULT_FRAME)
         .result_set_metadata
         .as_ref()
-        .unwrap_or(&ResultSetMetadata {
-            column_count: None,
-            column_metadata: None,
-        })
+        .unwrap_or(&EMPTY_RESULT_SET_METADATA)
         .column_metadata
         .as_ref()
         .map_or(&[][..], |x| &**x)
@@ -104,7 +109,11 @@ fn format_header<'a>(result: &'a SqlStatementResult) -> impl Iterator<Item = &'a
             }
         })
 }
-///
+/// The incoming Value data here is unfortunate.
+/// The actual data structure _allows_ for multiple values.
+/// I presume that at least normally, only one value will be set.
+/// This code will _work_, if maybe not well, even if more than one
+/// value is set.
 fn format_value(value: &Value) -> String {
     let mut string = String::new();
     if let Some(ref array_values) = value.array_values {
@@ -144,7 +153,7 @@ fn one_row(values: &[Value]) -> impl Iterator<Item = String> + '_ {
     values.iter().map(|value| format_value(&value))
 }
 
-/// Return an iterator of iterators of string slices
+/// Return an iterator of iterators of strings
 fn format_rows(
     result: &SqlStatementResult,
 ) -> impl Iterator<Item = impl Iterator<Item = String> + '_> {
@@ -152,10 +161,7 @@ fn format_rows(
     result
         .result_frame
         .as_ref()
-        .unwrap_or(&ResultFrame {
-            records: None,
-            result_set_metadata: None,
-        })
+        .unwrap_or(&EMPTY_RESULT_FRAME)
         .records
         .as_ref()
         .map_or(&[][..], |x| &**x)
@@ -292,7 +298,7 @@ fn main() -> Result<(), ExitFailure> {
     // I don't know how to take it apart in a non-tedious way.
     let execute_sql_response = runtime.block_on(fut)?;
     info!("{:?}", execute_sql_response);
-    let mut wtr = csv::Writer::from_writer(std::io::stdout());
+    let mut wtr = csv::Writer::from_writer(stdout());
     if let Some(results) = execute_sql_response.sql_statement_results {
         for result in &results {
             warn!(
