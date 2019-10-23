@@ -1,8 +1,7 @@
 use exitfailure::ExitFailure;
 use futures::prelude::*;
 use log::{info, warn};
-use rusoto_core::region::Region;
-use rusoto_core::RusotoError;
+use rusoto_core::{region::Region, RusotoError};
 use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{
     ExecuteSqlRequest, RdsData, RdsDataClient, ResultFrame, ResultSetMetadata, SqlStatementResult,
@@ -12,9 +11,7 @@ use rusoto_secretsmanager::{
     ListSecretsError, ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
 };
 use snafu::Snafu;
-use std::env;
-use std::io::stdout;
-use std::str::FromStr;
+use std::{env, io::stdout, str::FromStr};
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use tokio::runtime::Runtime;
 
