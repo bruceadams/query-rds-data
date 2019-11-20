@@ -1,6 +1,6 @@
 [package]
 name = "query-rds-data"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Bruce Adams <bruce.adams@acm.org>"]
 edition = "2018"
 
@@ -20,12 +20,12 @@ csv = "1.1.1"
 exitfailure = "0.5.1"
 futures = "0.1.29"
 log = "0.4.8"
-rusoto_core = "0.41.0"
-rusoto_rds = "0.41.0"
-rusoto_rds_data = "0.41.0"
-rusoto_secretsmanager =  "0.41.0"
+rusoto_core = "0.42.0"
+rusoto_rds = "0.42.0"
+rusoto_rds_data = "0.42.0"
+rusoto_secretsmanager =  "0.42.0"
 snafu = "0.6.0"
-stderrlog = "0.4.1"
+stderrlog = "0.4.3"
 tokio = "0.1.22"
 
 [dependencies.structopt]
