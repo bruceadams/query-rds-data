@@ -28,7 +28,7 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 0.3.4
+query-rds-data 0.5.0
 Query an Amazon RDS database
 
 USAGE:
@@ -41,17 +41,19 @@ FLAGS:
     -v, --verbose    Verbose mode (-v, -vv, -vvv, etc)
 
 OPTIONS:
-    -i, --db-cluster-identifier <db-id>
-            RDS database identifier.
+    -c, --db-cluster-identifier <db-id>    RDS database identifier.
     -p, --aws-profile <profile>
-            AWS source profile to use. This name references
-            an entry in ~/.aws/credentials [env:
-            AWS_PROFILE=]
+            AWS source profile to use. This name references an entry
+            in ~/.aws/credentials [env: AWS_PROFILE=]
     -r, --aws-region <region>
             AWS region to target. [env: AWS_DEFAULT_REGION=]
             [default: us-east-1]
     -t, --timestamp <ts>
             Timestamp (sec, ms, ns, none)
+
+    -u, --db-user-identifier <user-id>
+            RDS user identifier (really the AWS secret identifier).
+
 
 ARGS:
     <query>    SQL query.
