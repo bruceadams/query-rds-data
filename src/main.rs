@@ -1,6 +1,6 @@
 use exitfailure::ExitFailure;
 use futures::prelude::*;
-use log::{info, warn};
+use log::{error, info, warn};
 use rusoto_core::{region::Region, RusotoError};
 use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{
@@ -43,8 +43,12 @@ struct MyArgs {
     region: String,
 
     /// RDS database identifier.
-    #[structopt(long = "db-cluster-identifier", short = "i")]
+    #[structopt(long = "db-cluster-identifier", short = "c")]
     db_id: Option<String>,
+
+    /// RDS user identifier (really the AWS secret identifier).
+    #[structopt(long = "db-user-identifier", short = "u")]
+    user_id: Option<String>,
 
     /// SQL query.
     query: String,
@@ -174,43 +178,85 @@ fn my_cluster(
         Some(requested_db_cluster_identifier) => {
             for db_cluster in db_clusters {
                 if let Some(ref db_cluster_identifier) = db_cluster.db_cluster_identifier {
+                    // Since this is an exact match, we assume there will only ever be one.
                     if requested_db_cluster_identifier == db_cluster_identifier {
                         return Some(db_cluster.to_owned());
                     }
                 }
             }
+            // NoMatchingCluster
+            None
         }
         None => {
-            if db_clusters.len() == 1 {
-                return Some(db_clusters[0].to_owned());
+            // There is only one: go ahead and use it.
+            match db_clusters.len() {
+                1 => Some(db_clusters[0].to_owned()),
+                0 => None, // NoClusters
+                _ => None, // MultipleClusters
             }
         }
     }
-    None
 }
 
 fn my_secret(
     requested_db_cluster_resource_id: &str,
+    requested_db_user_id: &Option<String>,
     secret_list: &[SecretListEntry],
 ) -> Option<SecretListEntry> {
-    let name_starts_with =
-        "rds-db-credentials/".to_string() + requested_db_cluster_resource_id + "/";
-    let mut the_one = None;
-    // FIXME: pick the correct id, not just the last one
-    for secret_list_entry in secret_list {
-        if let Some(ref name) = secret_list_entry.name {
-            if name.starts_with(&name_starts_with) {
-                the_one = Some(secret_list_entry.to_owned());
+    match requested_db_user_id {
+        Some(requested_db_user_id) => {
+            let the_name = "rds-db-credentials/".to_string()
+                + requested_db_cluster_resource_id
+                + "/"
+                + requested_db_user_id;
+            for secret_list_entry in secret_list {
+                if let Some(ref name) = secret_list_entry.name {
+                    if *name == the_name {
+                        // Since this is an exact match, we assume there will only ever be one.
+                        return Some(secret_list_entry.to_owned());
+                    }
+                }
+            }
+            None // NoMatchingSecret
+        }
+        None => {
+            let name_starts_with =
+                "rds-db-credentials/".to_string() + requested_db_cluster_resource_id + "/";
+            let matches: Vec<&SecretListEntry> = secret_list
+                .iter()
+                .filter(|secret_list_entry| match secret_list_entry.name {
+                    Some(ref name) => name.starts_with(&name_starts_with),
+                    None => false,
+                })
+                .collect();
+            match matches.len() {
+                // There is only one: go ahead and use it.
+                1 => Some(matches[0].to_owned()),
+                0 => {
+                    error!(
+                        "No secrets found for database: {}",
+                        requested_db_cluster_resource_id
+                    );
+                    None // NoSecrets
+                }
+                _ => {
+                    let names: Vec<String> = matches
+                        .iter()
+                        .map(|entry| entry.name.as_ref().unwrap_or(&"".to_string()).to_owned())
+                        .collect();
+                    error!("Multiple secrets found {:?}", names);
+                    None // MultipleSecrets
+                }
             }
         }
     }
-    the_one
 }
 
 fn get_arns(
     runtime: &mut Runtime,
     region: &Region,
     requested_db_cluster_identifier: &Option<String>,
+    requested_user_id: &Option<String>,
 ) -> Result<MyArns, Error> {
     let describe_db_clusters_message = DescribeDBClustersMessage {
         db_cluster_identifier: None,
@@ -245,9 +291,11 @@ fn get_arns(
     match db_cluster {
         Some(db_cluster) => {
             let secret_list_entry = match list_secrets_response.secret_list {
-                Some(secret_list) => {
-                    my_secret(&db_cluster.db_cluster_resource_id.unwrap(), &secret_list)
-                }
+                Some(secret_list) => my_secret(
+                    &db_cluster.db_cluster_resource_id.unwrap(),
+                    &requested_user_id,
+                    &secret_list,
+                ),
                 None => None,
             };
             match secret_list_entry {
@@ -279,7 +327,7 @@ fn main() -> Result<(), ExitFailure> {
     let rds_data_client = RdsDataClient::new(region.clone());
 
     let mut runtime = Runtime::new()?;
-    let my_arns = get_arns(&mut runtime, &region, &args.db_id)?;
+    let my_arns = get_arns(&mut runtime, &region, &args.db_id, &args.user_id)?;
 
     let execute_sql_request = ExecuteSqlRequest {
         aws_secret_store_arn: my_arns.aws_secret_store_arn,
