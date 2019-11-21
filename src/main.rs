@@ -173,26 +173,32 @@ fn format_rows(
 fn my_cluster(
     requested_db_cluster_identifier: &Option<String>,
     db_clusters: &[DBCluster],
-) -> Option<DBCluster> {
+) -> Result<DBCluster, Error> {
     match requested_db_cluster_identifier {
         Some(requested_db_cluster_identifier) => {
             for db_cluster in db_clusters {
                 if let Some(ref db_cluster_identifier) = db_cluster.db_cluster_identifier {
                     // Since this is an exact match, we assume there will only ever be one.
                     if requested_db_cluster_identifier == db_cluster_identifier {
-                        return Some(db_cluster.to_owned());
+                        return Ok(db_cluster.to_owned());
                     }
                 }
             }
             // NoMatchingCluster
-            None
+            Err(Error::DBNotFound {
+                db_cluster_identifier: "NoMatchingCluster".to_string(),
+            })
         }
         None => {
             // There is only one: go ahead and use it.
             match db_clusters.len() {
-                1 => Some(db_clusters[0].to_owned()),
-                0 => None, // NoClusters
-                _ => None, // MultipleClusters
+                1 => Ok(db_clusters[0].to_owned()),
+                0 => Err(Error::DBNotFound {
+                    db_cluster_identifier: "NoClusters".to_string(),
+                }), // NoClusters
+                _ => Err(Error::DBNotFound {
+                    db_cluster_identifier: "MultipleClusters".to_string(),
+                }), // MultipleClusters
             }
         }
     }
@@ -202,7 +208,7 @@ fn my_secret(
     requested_db_cluster_resource_id: &str,
     requested_db_user_id: &Option<String>,
     secret_list: &[SecretListEntry],
-) -> Option<SecretListEntry> {
+) -> Result<SecretListEntry, Error> {
     match requested_db_user_id {
         Some(requested_db_user_id) => {
             let the_name = "rds-db-credentials/".to_string()
@@ -213,11 +219,11 @@ fn my_secret(
                 if let Some(ref name) = secret_list_entry.name {
                     if *name == the_name {
                         // Since this is an exact match, we assume there will only ever be one.
-                        return Some(secret_list_entry.to_owned());
+                        return Ok(secret_list_entry.to_owned());
                     }
                 }
             }
-            None // NoMatchingSecret
+            Err(Error::SecretNotFound {}) // NoMatchingSecret
         }
         None => {
             let name_starts_with =
@@ -231,13 +237,13 @@ fn my_secret(
                 .collect();
             match matches.len() {
                 // There is only one: go ahead and use it.
-                1 => Some(matches[0].to_owned()),
+                1 => Ok(matches[0].to_owned()),
                 0 => {
                     error!(
                         "No secrets found for database: {}",
                         requested_db_cluster_resource_id
                     );
-                    None // NoSecrets
+                    Err(Error::SecretNotFound {}) // NoSecrets
                 }
                 _ => {
                     let names: Vec<String> = matches
@@ -245,7 +251,7 @@ fn my_secret(
                         .map(|entry| entry.name.as_ref().unwrap_or(&"".to_string()).to_owned())
                         .collect();
                     error!("Multiple secrets found {:?}", names);
-                    None // MultipleSecrets
+                    Err(Error::SecretNotFound {}) // MultipleSecrets
                 }
             }
         }
@@ -285,34 +291,25 @@ fn get_arns(
     info!("{:?}", db_cluster_message);
     info!("{:?}", list_secrets_response);
     let db_cluster = match db_cluster_message.db_clusters {
-        Some(db_clusters) => my_cluster(requested_db_cluster_identifier, &db_clusters),
-        None => None,
-    };
-    match db_cluster {
-        Some(db_cluster) => {
-            let secret_list_entry = match list_secrets_response.secret_list {
-                Some(secret_list) => my_secret(
-                    &db_cluster.db_cluster_resource_id.unwrap(),
-                    &requested_user_id,
-                    &secret_list,
-                ),
-                None => None,
-            };
-            match secret_list_entry {
-                Some(secret_list_entry) => Ok(MyArns {
-                    aws_secret_store_arn: secret_list_entry.arn.unwrap(),
-                    db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
-                }),
-                None => Err(Error::SecretNotFound {}),
-            }
-        }
+        Some(db_clusters) => my_cluster(requested_db_cluster_identifier, &db_clusters)?,
         None => {
-            // TODO Enhance this error message to list what was found
-            Err(Error::DBNotFound {
-                db_cluster_identifier: requested_db_cluster_identifier.clone().unwrap_or_default(),
+            return Err(Error::DBNotFound {
+                db_cluster_identifier: "NoClusters".to_string(),
             })
         }
-    }
+    };
+    let secret_list_entry = match list_secrets_response.secret_list {
+        Some(secret_list) => my_secret(
+            &db_cluster.db_cluster_resource_id.unwrap(),
+            &requested_user_id,
+            &secret_list,
+        )?,
+        None => return Err(Error::SecretNotFound {}),
+    };
+    Ok(MyArns {
+        aws_secret_store_arn: secret_list_entry.arn.unwrap(),
+        db_cluster_or_instance_arn: db_cluster.db_cluster_arn.unwrap(),
+    })
 }
 
 fn main() -> Result<(), ExitFailure> {
