@@ -1,6 +1,6 @@
 use exitfailure::ExitFailure;
 use futures::prelude::*;
-use log::{error, info, warn};
+use log::{info, warn};
 use rusoto_core::{region::Region, RusotoError};
 use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{
@@ -66,19 +66,45 @@ struct MyArgs {
 
 #[derive(Debug, Snafu)]
 enum Error {
-    // DescribeDBClustersError, ListSecretsError
-    #[snafu(display("Failed to find cluster: {}", source))]
+    #[snafu(display("Failed to lookup clusters: {}", source))]
     DBClusterLookup {
         source: RusotoError<DescribeDBClustersError>,
     },
-    #[snafu(display("Failed to find secret: {}", source))]
+    #[snafu(display("Failed to find any RDS databases"))]
+    DBClusterLookupEmpty {},
+    #[snafu(display("No DBs found"))]
+    DBClusterEmpty {},
+    #[snafu(display(
+        "No DB matched \"{}\", available ids are {:?}",
+        db_cluster_identifier,
+        available_ids
+    ))]
+    DBClusterNoMatch {
+        db_cluster_identifier: String,
+        available_ids: Vec<String>,
+    },
+    #[snafu(display("Multiple DBs found, please specify one of {:?}", available_ids))]
+    DBClusterMultiple { available_ids: Vec<String> },
+
+    #[snafu(display("Failed to lookup secrets: {}", source))]
     SecretLookup {
         source: RusotoError<ListSecretsError>,
     },
-    #[snafu(display("Failed to find secret"))]
+    #[snafu(display("Failed to find any secrets"))]
     SecretNotFound {},
-    #[snafu(display("Failed to find DB {}", db_cluster_identifier))]
-    DBNotFound { db_cluster_identifier: String },
+    #[snafu(display("No DB user secrets found"))]
+    SecretsUsersEmpty {},
+    #[snafu(display(
+        "No DB user matched \"{}\", available users are {:?}",
+        db_user_id,
+        available_ids
+    ))]
+    SecretsUsersNoMatch {
+        db_user_id: String,
+        available_ids: Vec<String>,
+    },
+    #[snafu(display("Multiple DB users found, please specify one of {:?}", available_ids))]
+    SecretsUsersMultiple { available_ids: Vec<String> },
 }
 
 struct MyArns {
@@ -112,7 +138,7 @@ fn format_header<'a>(result: &'a SqlStatementResult) -> impl Iterator<Item = &'a
 }
 /// The incoming Value data here is unfortunate.
 /// The actual data structure _allows_ for multiple values.
-/// I presume that at least normally, only one value will be set.
+/// I presume that, at least normally, only one value will be set.
 /// This code will _work_, if maybe not well, even if more than one
 /// value is set.
 fn format_value(value: &Value) -> String {
@@ -170,6 +196,19 @@ fn format_rows(
         .map(|record| one_row(record.values.as_ref().map_or(&[][..], |x| &**x)))
 }
 
+fn cluster_ids(db_clusters: &[DBCluster]) -> Vec<String> {
+    db_clusters
+        .iter()
+        .map(|db_cluster| {
+            db_cluster
+                .db_cluster_identifier
+                .as_ref()
+                .unwrap_or(&"".to_string())
+                .to_owned()
+        })
+        .collect()
+}
+
 fn my_cluster(
     requested_db_cluster_identifier: &Option<String>,
     db_clusters: &[DBCluster],
@@ -178,30 +217,59 @@ fn my_cluster(
         Some(requested_db_cluster_identifier) => {
             for db_cluster in db_clusters {
                 if let Some(ref db_cluster_identifier) = db_cluster.db_cluster_identifier {
-                    // Since this is an exact match, we assume there will only ever be one.
+                    // Since this is an exact match, we assume there is only one.
                     if requested_db_cluster_identifier == db_cluster_identifier {
                         return Ok(db_cluster.to_owned());
                     }
                 }
             }
-            // NoMatchingCluster
-            Err(Error::DBNotFound {
-                db_cluster_identifier: "NoMatchingCluster".to_string(),
+            Err(Error::DBClusterNoMatch {
+                db_cluster_identifier: requested_db_cluster_identifier.to_owned(),
+                available_ids: cluster_ids(db_clusters),
             })
         }
         None => {
-            // There is only one: go ahead and use it.
             match db_clusters.len() {
+                // There is exactly one: go ahead and use it.
                 1 => Ok(db_clusters[0].to_owned()),
-                0 => Err(Error::DBNotFound {
-                    db_cluster_identifier: "NoClusters".to_string(),
-                }), // NoClusters
-                _ => Err(Error::DBNotFound {
-                    db_cluster_identifier: "MultipleClusters".to_string(),
-                }), // MultipleClusters
+                0 => Err(Error::DBClusterEmpty {}),
+                _ => Err(Error::DBClusterMultiple {
+                    available_ids: cluster_ids(db_clusters),
+                }),
             }
         }
     }
+}
+
+fn secrets_for_db<'a>(
+    requested_db_cluster_resource_id: &str,
+    secret_list: &'a [SecretListEntry],
+) -> Vec<&'a SecretListEntry> {
+    // I don't know if this is a universal naming standard for secrets.
+    // If not, this code is badly wrong.
+    let name_starts_with =
+        "rds-db-credentials/".to_string() + requested_db_cluster_resource_id + "/";
+    secret_list
+        .iter()
+        .filter(|secret_list_entry| match secret_list_entry.name {
+            Some(ref name) => name.starts_with(&name_starts_with).to_owned(),
+            None => false,
+        })
+        .collect()
+}
+
+fn user_id_from_secret(secret_list_entry: &SecretListEntry) -> String {
+    match secret_list_entry.name {
+        Some(ref name) => name.splitn(3, '/').last().unwrap_or("").to_string(),
+        None => "".to_string(),
+    }
+}
+
+fn user_names(secret_list: &[&SecretListEntry]) -> Vec<String> {
+    secret_list
+        .iter()
+        .map(|entry| user_id_from_secret(entry))
+        .collect()
 }
 
 fn my_secret(
@@ -209,50 +277,31 @@ fn my_secret(
     requested_db_user_id: &Option<String>,
     secret_list: &[SecretListEntry],
 ) -> Result<SecretListEntry, Error> {
+    let db_secrets = secrets_for_db(requested_db_cluster_resource_id, secret_list);
+
     match requested_db_user_id {
         Some(requested_db_user_id) => {
-            let the_name = "rds-db-credentials/".to_string()
-                + requested_db_cluster_resource_id
-                + "/"
-                + requested_db_user_id;
-            for secret_list_entry in secret_list {
+            for secret_list_entry in &db_secrets {
                 if let Some(ref name) = secret_list_entry.name {
-                    if *name == the_name {
-                        // Since this is an exact match, we assume there will only ever be one.
-                        return Ok(secret_list_entry.to_owned());
+                    if name.ends_with(requested_db_user_id) {
+                        // Since this is an exact match, we assume there is only one.
+                        return Ok((*secret_list_entry).to_owned());
                     }
                 }
             }
-            Err(Error::SecretNotFound {}) // NoMatchingSecret
+            Err(Error::SecretsUsersNoMatch {
+                db_user_id: requested_db_user_id.to_owned(),
+                available_ids: user_names(&db_secrets),
+            })
         }
         None => {
-            let name_starts_with =
-                "rds-db-credentials/".to_string() + requested_db_cluster_resource_id + "/";
-            let matches: Vec<&SecretListEntry> = secret_list
-                .iter()
-                .filter(|secret_list_entry| match secret_list_entry.name {
-                    Some(ref name) => name.starts_with(&name_starts_with),
-                    None => false,
-                })
-                .collect();
-            match matches.len() {
-                // There is only one: go ahead and use it.
-                1 => Ok(matches[0].to_owned()),
-                0 => {
-                    error!(
-                        "No secrets found for database: {}",
-                        requested_db_cluster_resource_id
-                    );
-                    Err(Error::SecretNotFound {}) // NoSecrets
-                }
-                _ => {
-                    let names: Vec<String> = matches
-                        .iter()
-                        .map(|entry| entry.name.as_ref().unwrap_or(&"".to_string()).to_owned())
-                        .collect();
-                    error!("Multiple secrets found {:?}", names);
-                    Err(Error::SecretNotFound {}) // MultipleSecrets
-                }
+            match db_secrets.len() {
+                // There is exactly one: go ahead and use it.
+                1 => Ok(db_secrets[0].to_owned()),
+                0 => Err(Error::SecretsUsersEmpty {}),
+                _ => Err(Error::SecretsUsersMultiple {
+                    available_ids: user_names(&db_secrets),
+                }),
             }
         }
     }
@@ -292,11 +341,7 @@ fn get_arns(
     info!("{:?}", list_secrets_response);
     let db_cluster = match db_cluster_message.db_clusters {
         Some(db_clusters) => my_cluster(requested_db_cluster_identifier, &db_clusters)?,
-        None => {
-            return Err(Error::DBNotFound {
-                db_cluster_identifier: "NoClusters".to_string(),
-            })
-        }
+        None => return Err(Error::DBClusterLookupEmpty {}),
     };
     let secret_list_entry = match list_secrets_response.secret_list {
         Some(secret_list) => my_secret(
