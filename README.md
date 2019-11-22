@@ -58,3 +58,65 @@ OPTIONS:
 ARGS:
     <query>    SQL query.
 ```
+
+## Error messages
+
+I hope that the error messages from `query-rds-data` are helpful for figuring out what went wrong and how to address the issue.
+
+```bash
+# No RDS instances exist
+$ query-rds-data "select * from db1.names"
+Error: No DBs found
+$ query-rds-data "select * from db1.names" --db-cluster-identifier nope
+Error: No DB matched "nope", available ids are []
+
+# Single RDS instance exists
+$ query-rds-data "select * from db1.names" --db-cluster-identifier nope
+Error: No DB matched "nope", available ids are ["demo"]
+
+# No credentials in AWS Secrets Manager
+$ query-rds-data "select * from db1.names"
+Error: No DB user secrets found
+$ query-rds-data "select * from db1.names" --db-user-identifier fake
+Error: No DB user matched "fake", available users are []
+
+# Single secret exists for this database
+$ query-rds-data "create database db1"
+""
+$ query-rds-data "create table db1.names (id int, name varchar(64))"
+""
+$ query-rds-data "insert into db1.names values (1,'Bruce')"
+""
+$ query-rds-data "select * from db1.names"
+id,name
+1,Bruce
+$ query-rds-data "select * from information_schema.tables where table_schema='db1'"
+TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,ENGINE,VERSION,ROW_FORMAT,TABLE_ROWS,AVG_ROW_LENGTH,DATA_LENGTH,MAX_DATA_LENGTH,INDEX_LENGTH,DATA_FREE,AUTO_INCREMENT,CREATE_TIME,UPDATE_TIME,CHECK_TIME,TABLE_COLLATION,CHECKSUM,CREATE_OPTIONS,TABLE_COMMENT
+def,db1,names,BASE TABLE,InnoDB,10,Compact,0,0,16384,0,0,0,NULL,NULL,NULL,NULL,latin1_swedish_ci,NULL,,
+
+# Explicit cluster and user names can be used
+$ query-rds-data "select * from db1.names" --db-cluster-identifier demo
+id,name
+1,Bruce
+$ query-rds-data "select * from db1.names" --db-user-identifier admin
+id,name
+1,Bruce
+$ query-rds-data "select * from db1.names" --db-cluster-identifier demo --db-user-identifier admin
+id,name
+1,Bruce
+
+# Names that are not found list what is available to be selected
+$ query-rds-data "select * from db1.names" --db-cluster-identifier nope
+Error: No DB matched "nope", available ids are ["demo"]
+$ query-rds-data "select * from db1.names" --db-user-identifier fake
+Error: No DB user matched "fake", available users are ["admin"]
+
+# If there are multiple clusters or users available, you must select one
+$ query-rds-data "select * from db1.names"
+Error: Multiple DBs found, please specify one of ["demo", "empty"]
+$ query-rds-data "select * from db1.names" --db-cluster-identifier demo
+Error: Multiple DB users found, please specify one of ["admin", "read_only"]
+$ query-rds-data "select * from db1.names"  --db-cluster-identifier demo --db-user-identifier read_only
+id,name
+1,Bruce
+```
