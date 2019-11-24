@@ -1,6 +1,6 @@
 use exitfailure::ExitFailure;
 use futures::prelude::*;
-use log::{info, warn};
+use log::info;
 use rusoto_core::{region::Region, RusotoError};
 use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{
@@ -385,13 +385,14 @@ fn main() -> Result<(), ExitFailure> {
     // I don't know how to take it apart in a non-tedious way.
     let execute_sql_response = runtime.block_on(fut)?;
     info!("{:?}", execute_sql_response);
-    let mut wtr = csv::Writer::from_writer(stdout());
     if let Some(results) = execute_sql_response.sql_statement_results {
         for result in &results {
-            warn!(
-                "number_of_records_updated: {}",
-                result.number_of_records_updated.unwrap_or(-1)
-            );
+            if let Some(number_of_records_updated) = result.number_of_records_updated {
+                if number_of_records_updated >= 0 {
+                    println!("number_of_records_updated: {}", number_of_records_updated)
+                }
+            }
+            let mut wtr = csv::Writer::from_writer(stdout());
             wtr.write_record(format_header(result))?;
             for row in format_rows(result) {
                 wtr.write_record(row)?;

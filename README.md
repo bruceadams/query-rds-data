@@ -1,4 +1,5 @@
 # Query AWS RDS Data from the command line
+
 [![Build Status](https://img.shields.io/travis/com/bruceadams/query-rds-data?logo=travis)](https://travis-ci.com/bruceadams/query-rds-data)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v1.4%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 [![Apache License](https://img.shields.io/github/license/bruceadams/query-rds-data?logo=apache)](LICENSE)
@@ -28,7 +29,7 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 0.5.0
+query-rds-data 0.5.1
 Query an Amazon RDS database
 
 USAGE:
