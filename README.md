@@ -13,6 +13,13 @@
 Prebuilt binaries for some major platforms are available under
 [Github releases](https://github.com/bruceadams/query-rds-data/releases).
 
+On macOS, the prebuilt binary can be installed using [Homebrew](https://brew.sh).
+
+```bash
+$ brew tap bruceadams/utilities
+$ brew install query-rds-data
+```
+
 If you have the [Rust tool chain](https://rustup.rs/) installed,
 `cargo install query-rds-data` will work.
 
@@ -29,7 +36,7 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 0.5.1
+query-rds-data 0.5.2
 Query an Amazon RDS database
 
 USAGE:
