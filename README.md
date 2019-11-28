@@ -44,9 +44,8 @@ USAGE:
 
 FLAGS:
     -h, --help       Prints help information
-    -q, --quiet      Silence all output
     -V, --version    Prints version information
-    -v, --verbose    Verbose mode (-v, -vv, -vvv, etc)
+    -v, --verbose    Increase logging verbosity (-v, -vv, -vvv, etc)
 
 OPTIONS:
     -c, --db-cluster-identifier <db-id>    RDS database identifier.
@@ -56,9 +55,6 @@ OPTIONS:
     -r, --aws-region <region>
             AWS region to target. [env: AWS_DEFAULT_REGION=]
             [default: us-east-1]
-    -t, --timestamp <ts>
-            Timestamp (sec, ms, ns, none)
-
     -u, --db-user-identifier <user-id>
             RDS user identifier (really the AWS secret identifier).
 

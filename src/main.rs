@@ -53,15 +53,9 @@ struct MyArgs {
     /// SQL query.
     query: String,
 
-    /// Silence all output
-    #[structopt(short = "q", long = "quiet")]
-    quiet: bool,
-    /// Verbose mode (-v, -vv, -vvv, etc)
+    /// Increase logging verbosity (-v, -vv, -vvv, etc)
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     verbose: usize,
-    /// Timestamp (sec, ms, ns, none)
-    #[structopt(short = "t", long = "timestamp")]
-    ts: Option<stderrlog::Timestamp>,
 }
 
 #[derive(Debug, Snafu)]
@@ -359,10 +353,11 @@ fn get_arns(
 
 fn main() -> Result<(), ExitFailure> {
     let args = MyArgs::from_args();
-    stderrlog::new()
-        .quiet(args.quiet)
-        .verbosity(args.verbose)
-        .timestamp(args.ts.unwrap_or(stderrlog::Timestamp::Off))
+    loggerv::Logger::new()
+        .output(&log::Level::Info, loggerv::Output::Stderr)
+        .output(&log::Level::Debug, loggerv::Output::Stderr)
+        .output(&log::Level::Trace, loggerv::Output::Stderr)
+        .verbosity(args.verbose as u64)
         .init()?;
     env::set_var("AWS_PROFILE", args.profile);
     let region = Region::from_str(&args.region)?;
