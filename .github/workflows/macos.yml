@@ -9,11 +9,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Rustup
-      run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --verbose
     - name: Build
-      run: env PATH="$HOME/.cargo/bin:$PATH" cargo build --verbose
+      run: cargo build --verbose
     - name: Clippy
-      run: env PATH="$HOME/.cargo/bin:$PATH" cargo clippy --verbose
+      run: cargo clippy --verbose
     - name: Run tests
-      run: env PATH="$HOME/.cargo/bin:$PATH" cargo test --verbose
+      run: cargo test --verbose
