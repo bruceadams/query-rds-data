@@ -18,15 +18,15 @@ travis-ci = { repository = "bruceadams/query-rds-data" }
 [dependencies]
 csv = "1.1.3"
 exitfailure = "0.5.1"
-futures = "0.1.29"
+futures = "0.3.4"
 log = "0.4.8"
 loggerv = "0.7.2"
-rusoto_core = "0.42.0"
-rusoto_rds = "0.42.0"
-rusoto_rds_data = "0.42.0"
-rusoto_secretsmanager =  "0.42.0"
+rusoto_core = "0.43.0-beta.1"
+rusoto_rds = "0.43.0-beta.1"
+rusoto_rds_data = "0.43.0-beta.1"
+rusoto_secretsmanager =  "0.43.0-beta.1"
 snafu = "0.6.2"
-tokio = "0.1.22"
+tokio = "0.2.11"
 
 [dependencies.structopt]
 features = ["wrap_help"]

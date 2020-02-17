@@ -1,4 +1,5 @@
 use exitfailure::ExitFailure;
+use futures::join;
 use futures::prelude::*;
 use log::info;
 use rusoto_core::{region::Region, RusotoError};
@@ -13,7 +14,6 @@ use rusoto_secretsmanager::{
 use snafu::Snafu;
 use std::{env, io::stdout, str::FromStr};
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
-use tokio::runtime::Runtime;
 
 const EMPTY_RESULT_FRAME: ResultFrame = ResultFrame {
     records: None,
@@ -301,8 +301,7 @@ fn my_secret(
     }
 }
 
-fn get_arns(
-    runtime: &mut Runtime,
+async fn get_arns(
     region: &Region,
     requested_db_cluster_identifier: &Option<String>,
     requested_user_id: &Option<String>,
@@ -330,14 +329,14 @@ fn get_arns(
         .list_secrets(list_secrets_request)
         .map_err(|e| Error::SecretLookup { source: e });
 
-    let (db_cluster_message, list_secrets_response) = runtime.block_on(fut1.join(fut2))?;
+    let (db_cluster_message, list_secrets_response) = join!(fut1, fut2);
     info!("{:?}", db_cluster_message);
     info!("{:?}", list_secrets_response);
-    let db_cluster = match db_cluster_message.db_clusters {
+    let db_cluster = match db_cluster_message?.db_clusters {
         Some(db_clusters) => my_cluster(requested_db_cluster_identifier, &db_clusters)?,
         None => return Err(Error::DBClusterLookupEmpty {}),
     };
-    let secret_list_entry = match list_secrets_response.secret_list {
+    let secret_list_entry = match list_secrets_response?.secret_list {
         Some(secret_list) => my_secret(
             &db_cluster.db_cluster_resource_id.unwrap(),
             &requested_user_id,
@@ -351,7 +350,8 @@ fn get_arns(
     })
 }
 
-fn main() -> Result<(), ExitFailure> {
+#[tokio::main]
+async fn main() -> Result<(), ExitFailure> {
     let args = MyArgs::from_args();
     loggerv::Logger::new()
         .output(&log::Level::Info, loggerv::Output::Stderr)
@@ -363,8 +363,7 @@ fn main() -> Result<(), ExitFailure> {
     let region = Region::from_str(&args.region)?;
     let rds_data_client = RdsDataClient::new(region.clone());
 
-    let mut runtime = Runtime::new()?;
-    let my_arns = get_arns(&mut runtime, &region, &args.db_id, &args.user_id)?;
+    let my_arns = get_arns(&region, &args.db_id, &args.user_id).await?;
 
     let execute_sql_request = ExecuteSqlRequest {
         aws_secret_store_arn: my_arns.aws_secret_store_arn,
@@ -375,10 +374,9 @@ fn main() -> Result<(), ExitFailure> {
     };
 
     info!("{:?}", execute_sql_request);
-    let fut = rds_data_client.execute_sql(execute_sql_request);
     // The result that comes back is fairly intense.
     // I don't know how to take it apart in a non-tedious way.
-    let execute_sql_response = runtime.block_on(fut)?;
+    let execute_sql_response = rds_data_client.execute_sql(execute_sql_request).await?;
     info!("{:?}", execute_sql_response);
     if let Some(results) = execute_sql_response.sql_statement_results {
         for result in &results {
