@@ -24,7 +24,7 @@ loggerv = "0.7.2"
 rusoto_core = "0.43.0"
 rusoto_rds = "0.43.0"
 rusoto_rds_data = "0.43.0"
-rusoto_secretsmanager =  "0.43.0-beta.1"
+rusoto_secretsmanager =  "0.43.0"
 snafu = "0.6.3"
 tokio = "0.2.14"
 
