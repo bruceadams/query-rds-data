@@ -1160,9 +1160,9 @@ dependencies = [
 
 [[package]]
 name = "rusoto_rds"
-version = "0.43.0-beta.1"
+version = "0.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60274f9d4e5e9147d499f4873785d6c900ea771f003bee1c3f68f592ee05e579"
+checksum = "477c5f7708f4388f30fedfbdbf1f67228152dfde695d3f25d2d993ee2c2fdf02"
 dependencies = [
  "async-trait",
  "bytes",
