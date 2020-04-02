@@ -1189,9 +1189,9 @@ dependencies = [
 
 [[package]]
 name = "rusoto_secretsmanager"
-version = "0.43.0-beta.1"
+version = "0.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "538ff76c6434f8defc0cf68f2844f7ea3ffe92074dab29df7b38640e2e7927fa"
+checksum = "8c0266817051cc2e4a01f8129146c6d8f194b500fd6e689495f33946ff290141"
 dependencies = [
  "async-trait",
  "bytes",
