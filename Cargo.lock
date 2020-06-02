@@ -102,6 +102,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base-x"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b20b618342cf9891c292c4f5ac2cde7287cc5c87e87e9c769d617793607dec1"
+
+[[package]]
 name = "base64"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -162,6 +168,12 @@ dependencies = [
  "regex-automata",
  "serde",
 ]
+
+[[package]]
+name = "bumpalo"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e8c087f005730276d1096a652e92a8bacee2e2472bcc9715a74d2bec38b5820"
 
 [[package]]
 name = "byte-tools"
@@ -325,6 +337,12 @@ dependencies = [
  "redox_users",
  "winapi 0.3.8",
 ]
+
+[[package]]
+name = "discard"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "doc-comment"
@@ -1007,7 +1025,7 @@ dependencies = [
  "futures",
  "log",
  "loggerv",
- "rusoto_core",
+ "rusoto_core 0.43.0",
  "rusoto_rds",
  "rusoto_rds_data",
  "rusoto_secretsmanager",
@@ -1138,8 +1156,37 @@ dependencies = [
  "md5",
  "percent-encoding",
  "pin-project",
- "rusoto_credential",
- "rusoto_signature",
+ "rusoto_credential 0.43.0",
+ "rusoto_signature 0.43.0",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "xml-rs",
+]
+
+[[package]]
+name = "rusoto_core"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841ca8f73e7498ba39146ab43acea906bbbb807d92ec0b7ea4b6293d2621f80d"
+dependencies = [
+ "async-trait",
+ "base64 0.12.0",
+ "bytes",
+ "futures",
+ "hmac",
+ "http",
+ "hyper",
+ "hyper-tls",
+ "lazy_static",
+ "log",
+ "md5",
+ "percent-encoding",
+ "pin-project",
+ "rusoto_credential 0.44.0",
+ "rusoto_signature 0.44.0",
  "rustc_version",
  "serde",
  "serde_json",
@@ -1169,15 +1216,35 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusoto_rds"
-version = "0.43.0"
+name = "rusoto_credential"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "477c5f7708f4388f30fedfbdbf1f67228152dfde695d3f25d2d993ee2c2fdf02"
+checksum = "60669ddc1bdbb83ce225593649d36b4c5f6bf9db47cc1ab3e81281abffc853f4"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "dirs",
+ "futures",
+ "hyper",
+ "pin-project",
+ "regex",
+ "serde",
+ "serde_json",
+ "shlex",
+ "tokio",
+ "zeroize",
+]
+
+[[package]]
+name = "rusoto_rds"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "257bd33de7516dd8ac93e8726225bda3226eecbd52997aca84bd4c0cc9b5b05e"
 dependencies = [
  "async-trait",
  "bytes",
  "futures",
- "rusoto_core",
+ "rusoto_core 0.44.0",
  "serde_urlencoded",
  "xml-rs",
 ]
@@ -1191,7 +1258,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures",
- "rusoto_core",
+ "rusoto_core 0.43.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -1206,7 +1273,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures",
- "rusoto_core",
+ "rusoto_core 0.43.0",
  "serde",
  "serde_json",
 ]
@@ -1228,11 +1295,36 @@ dependencies = [
  "md5",
  "percent-encoding",
  "pin-project",
- "rusoto_credential",
+ "rusoto_credential 0.43.0",
  "rustc_version",
  "serde",
  "sha2",
- "time 0.2.6",
+ "time 0.2.16",
+ "tokio",
+]
+
+[[package]]
+name = "rusoto_signature"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9eddff187ac18c5a91d9ccda9353f30cf531620dce437c4db661dfe2e23b2029"
+dependencies = [
+ "base64 0.12.0",
+ "bytes",
+ "futures",
+ "hex",
+ "hmac",
+ "http",
+ "hyper",
+ "log",
+ "md5",
+ "percent-encoding",
+ "pin-project",
+ "rusoto_credential 0.44.0",
+ "rustc_version",
+ "serde",
+ "sha2",
+ "time 0.2.16",
  "tokio",
 ]
 
@@ -1261,17 +1353,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
  "semver",
-]
-
-[[package]]
-name = "rustversion"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3bba175698996010c4f6dce5e7f173b6eb781fce25d2cfc45e27091ce0b79f6"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1370,6 +1451,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2579985fda508104f7587689507983eadd6a6e84dd35d6d115361f530916fa0d"
+
+[[package]]
 name = "sha2"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1441,6 +1528,61 @@ dependencies = [
  "redox_syscall",
  "winapi 0.3.8",
 ]
+
+[[package]]
+name = "standback"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e4b8c631c998468961a9ea159f064c5c8499b95b5e4a34b77849d45949d540"
+
+[[package]]
+name = "stdweb"
+version = "0.4.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d022496b16281348b52d0e30ae99e01a73d737b2f45d38fed4edf79f9325a1d5"
+dependencies = [
+ "discard",
+ "rustc_version",
+ "stdweb-derive",
+ "stdweb-internal-macros",
+ "stdweb-internal-runtime",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "stdweb-derive"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c87a60a40fccc84bef0652345bbbbbe20a605bf5d0ce81719fc476f5c03b50ef"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_derive",
+ "syn",
+]
+
+[[package]]
+name = "stdweb-internal-macros"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58fa5ff6ad0d98d1ffa8cb115892b6e69d67799f6763e162a1c9db421dc22e11"
+dependencies = [
+ "base-x",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha1",
+ "syn",
+]
+
+[[package]]
+name = "stdweb-internal-runtime"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "213701ba3370744dcd1a12960caa4843b3d68b4d1c0a5d575e0d65b2ee9d16c0"
 
 [[package]]
 name = "strsim"
@@ -1569,12 +1711,17 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.2.6"
+version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcb8742444475438c500d017736dd7cf3d9c9dd1f0153cfa4af428692484e3ef"
+checksum = "3a51cadc5b1eec673a685ff7c33192ff7b7603d0b75446fb354939ee615acb15"
 dependencies = [
- "rustversion",
+ "cfg-if",
+ "libc",
+ "standback",
+ "stdweb",
  "time-macros",
+ "version_check",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -1754,6 +1901,60 @@ name = "wasi"
 version = "0.9.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
+
+[[package]]
+name = "wasm-bindgen"
+version = "0.2.62"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3c7d40d09cdbf0f4895ae58cf57d92e1e57a9dd8ed2e8390514b54a47cc5551"
+dependencies = [
+ "cfg-if",
+ "wasm-bindgen-macro",
+]
+
+[[package]]
+name = "wasm-bindgen-backend"
+version = "0.2.62"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3972e137ebf830900db522d6c8fd74d1900dcfc733462e9a12e942b00b4ac94"
+dependencies = [
+ "bumpalo",
+ "lazy_static",
+ "log",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-macro"
+version = "0.2.62"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cd85aa2c579e8892442954685f0d801f9129de24fa2136b2c6a539c76b65776"
+dependencies = [
+ "quote",
+ "wasm-bindgen-macro-support",
+]
+
+[[package]]
+name = "wasm-bindgen-macro-support"
+version = "0.2.62"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eb197bd3a47553334907ffd2f16507b4f4f01bbec3ac921a7719e0decdfe72a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "wasm-bindgen-backend",
+ "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-shared"
+version = "0.2.62"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a91c2916119c17a8e316507afaaa2dd94b47646048014bbdf6bef098c1bb58ad"
 
 [[package]]
 name = "winapi"
