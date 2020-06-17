@@ -30,4 +30,4 @@ tokio = "0.2.21"
 
 [dependencies.structopt]
 features = ["wrap_help"]
-version = "0.3.14"
+version = "0.3.15"
