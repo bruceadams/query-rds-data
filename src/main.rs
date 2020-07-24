@@ -306,17 +306,8 @@ async fn get_arns(
     requested_db_cluster_identifier: &Option<String>,
     requested_user_id: &Option<String>,
 ) -> Result<MyArns, Error> {
-    let describe_db_clusters_message = DescribeDBClustersMessage {
-        db_cluster_identifier: None,
-        filters: None,
-        include_shared: None,
-        marker: None,
-        max_records: None,
-    };
-    let list_secrets_request = ListSecretsRequest {
-        max_results: None,
-        next_token: None,
-    };
+    let describe_db_clusters_message = DescribeDBClustersMessage::default();
+    let list_secrets_request = ListSecretsRequest::default();
 
     let rds_client = RdsClient::new(region.clone());
     let secrets_manager_client = SecretsManagerClient::new(region.clone());
@@ -367,10 +358,9 @@ async fn main() -> Result<(), ExitFailure> {
 
     let execute_sql_request = ExecuteSqlRequest {
         aws_secret_store_arn: my_arns.aws_secret_store_arn,
-        database: None,
         db_cluster_or_instance_arn: my_arns.db_cluster_or_instance_arn,
-        schema: None,
         sql_statements: args.query,
+        ..Default::default()
     };
 
     info!("{:?}", execute_sql_request);
