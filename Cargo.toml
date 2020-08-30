@@ -27,6 +27,6 @@ rusoto_secretsmanager = "0.45.0"
 snafu = "0.6.8"
 tokio = "0.2.22"
 
-[dependencies.structopt]
+[dependencies.clap]
 features = ["wrap_help"]
-version = "0.3.15"
+git = "https://github.com/clap-rs/clap"

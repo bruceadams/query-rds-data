@@ -1,3 +1,4 @@
+use clap::{AppSettings::ColoredHelp, Clap};
 use exitfailure::ExitFailure;
 use futures::join;
 use futures::prelude::*;
@@ -13,7 +14,6 @@ use rusoto_secretsmanager::{
 };
 use snafu::Snafu;
 use std::{env, io::stdout, str::FromStr};
-use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 
 const EMPTY_RESULT_FRAME: ResultFrame = ResultFrame {
     records: None,
@@ -26,35 +26,35 @@ const EMPTY_RESULT_SET_METADATA: ResultSetMetadata = ResultSetMetadata {
 };
 
 /// Query an Amazon RDS database
-#[derive(Debug, StructOpt)]
-#[structopt(global_settings(&[ColoredHelp]))]
+#[derive(Clap, Clone, Debug)]
+#[clap(global_setting = ColoredHelp)]
 struct MyArgs {
     /// AWS source profile to use. This name references an entry in ~/.aws/credentials
-    #[structopt(env = "AWS_PROFILE", long = "aws-profile", short = "p")]
+    #[clap(env = "AWS_PROFILE", long = "aws-profile", short = 'p')]
     profile: String,
 
     /// AWS region to target.
-    #[structopt(
+    #[clap(
         default_value = "us-east-1",
         env = "AWS_DEFAULT_REGION",
         long = "aws-region",
-        short = "r"
+        short = 'r'
     )]
     region: String,
 
     /// RDS database identifier.
-    #[structopt(long = "db-cluster-identifier", short = "c")]
+    #[clap(long = "db-cluster-identifier", short = 'c')]
     db_id: Option<String>,
 
     /// RDS user identifier (really the AWS secret identifier).
-    #[structopt(long = "db-user-identifier", short = "u")]
+    #[clap(long = "db-user-identifier", short = 'u')]
     user_id: Option<String>,
 
     /// SQL query.
     query: String,
 
     /// Increase logging verbosity (-v, -vv, -vvv, etc)
-    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
     verbose: usize,
 }
 
@@ -343,7 +343,7 @@ async fn get_arns(
 
 #[tokio::main]
 async fn main() -> Result<(), ExitFailure> {
-    let args = MyArgs::from_args();
+    let args = MyArgs::parse();
     loggerv::Logger::new()
         .output(&log::Level::Info, loggerv::Output::Stderr)
         .output(&log::Level::Debug, loggerv::Output::Stderr)
