@@ -16,7 +16,7 @@ travis-ci = { repository = "bruceadams/query-rds-data" }
 
 [dependencies]
 clap = "3.0.0-beta.2"
-csv = "1.1.4"
+csv = "1.1.5"
 exitfailure = "0.5.1"
 futures = "0.3.8"
 log = "0.4.11"
