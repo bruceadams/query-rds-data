@@ -25,7 +25,7 @@ rusoto_core = "0.45.0"
 rusoto_rds = "0.45.0"
 rusoto_rds_data = "0.45.0"
 rusoto_secretsmanager = "0.45.0"
-snafu = "0.6.9"
+snafu = "0.6.10"
 tokio-compat-02 = "0.1.2"
 
 [dependencies.tokio]
