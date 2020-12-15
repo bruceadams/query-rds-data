@@ -1099,7 +1099,7 @@ dependencies = [
  "rusoto_rds_data",
  "rusoto_secretsmanager",
  "snafu",
- "tokio 0.3.5",
+ "tokio 0.3.6",
  "tokio-compat-02",
 ]
 
@@ -1735,9 +1735,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a12a3eb39ee2c231be64487f1fcbe726c8f2514876a55480a5ab8559fc374252"
+checksum = "720ba21c25078711bf456d607987d95bce90f7c3bea5abe1db587862e7a1e87c"
 dependencies = [
  "autocfg",
  "futures-core",
@@ -1757,7 +1757,7 @@ dependencies = [
  "once_cell",
  "pin-project-lite 0.1.10",
  "tokio 0.2.22",
- "tokio 0.3.5",
+ "tokio 0.3.6",
 ]
 
 [[package]]
