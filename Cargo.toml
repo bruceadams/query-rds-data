@@ -29,5 +29,5 @@ snafu = "0.6.10"
 tokio-compat-02 = "0.1.2"
 
 [dependencies.tokio]
-version = "0.3.5"
+version = "1.0.0"
 features = ["macros", "rt-multi-thread"]
