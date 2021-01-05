@@ -26,7 +26,7 @@ rusoto_rds = "0.45.0"
 rusoto_rds_data = "0.45.0"
 rusoto_secretsmanager = "0.45.0"
 snafu = "0.6.10"
-tokio-compat-02 = "0.1.2"
+tokio-compat-02 = "0.2.0"
 
 [dependencies.tokio]
 version = "1.0.1"
