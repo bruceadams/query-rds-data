@@ -14,7 +14,6 @@ use rusoto_secretsmanager::{
 };
 use snafu::Snafu;
 use std::{env, io::stdout, str::FromStr};
-use tokio_compat_02::FutureExt;
 
 const EMPTY_RESULT_FRAME: ResultFrame = ResultFrame {
     records: None,
@@ -356,7 +355,6 @@ async fn main() -> Result<(), ExitFailure> {
     let rds_data_client = RdsDataClient::new(region.clone());
 
     let my_arns = get_arns(&region, &args.db_id, &args.user_id)
-        .compat()
         .await?;
 
     let execute_sql_request = ExecuteSqlRequest {
@@ -371,7 +369,6 @@ async fn main() -> Result<(), ExitFailure> {
     // I don't know how to take it apart in a non-tedious way.
     let execute_sql_response = rds_data_client
         .execute_sql(execute_sql_request)
-        .compat()
         .await?;
     info!("{:?}", execute_sql_response);
     if let Some(results) = execute_sql_response.sql_statement_results {
