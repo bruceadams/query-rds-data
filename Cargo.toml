@@ -28,5 +28,5 @@ rusoto_secretsmanager = "0.46.0"
 snafu = "0.6.10"
 
 [dependencies.tokio]
-version = "1.1.0"
+version = "1.1.1"
 features = ["macros", "rt-multi-thread"]
