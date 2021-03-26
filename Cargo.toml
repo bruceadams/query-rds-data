@@ -25,7 +25,7 @@ loggerv = "0.7.2"
 rusoto_core = "0.46.0"
 rusoto_rds = "0.46.0"
 rusoto_secretsmanager = "0.46.0"
-serde = "1.0.64"
+serde = "1.0.125"
 snafu = "0.6.10"
 
 [dependencies.rusoto_rds_data]
