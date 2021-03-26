@@ -1,4 +1,4 @@
-use clap::{AppSettings::ColoredHelp, Clap};
+use clap::{AppSettings::ColoredHelp, ArgEnum, Clap};
 use exitfailure::ExitFailure;
 use futures::join;
 use futures::prelude::*;
@@ -6,32 +6,31 @@ use log::info;
 use rusoto_core::{region::Region, RusotoError};
 use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{
-    ExecuteSqlRequest, RdsData, RdsDataClient, ResultFrame, ResultSetMetadata, SqlStatementResult,
-    Value,
+    ExecuteStatementRequest, ExecuteStatementResponse, Field, RdsData, RdsDataClient,
 };
 use rusoto_secretsmanager::{
     ListSecretsError, ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
 };
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use snafu::Snafu;
-use std::{env, io::stdout, str::FromStr};
+use std::{collections::HashMap, env, io::stdout, io::Write, str::FromStr};
 
-const EMPTY_RESULT_FRAME: ResultFrame = ResultFrame {
-    records: None,
-    result_set_metadata: None,
-};
-
-const EMPTY_RESULT_SET_METADATA: ResultSetMetadata = ResultSetMetadata {
-    column_count: None,
-    column_metadata: None,
-};
+#[enumeration(case_insensitive)]
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq, enum_utils::FromStr)]
+enum Format {
+    Csv,
+    Cooked,
+    Raw,
+}
 
 /// Query an Amazon RDS database
 #[derive(Clap, Clone, Debug)]
 #[clap(global_setting = ColoredHelp)]
 struct MyArgs {
     /// AWS source profile to use. This name references an entry in ~/.aws/credentials
-    #[clap(env = "AWS_PROFILE", long = "aws-profile", short = 'p')]
-    profile: String,
+    #[clap(long = "aws-profile", short = 'p')]
+    profile: Option<String>,
 
     /// AWS region to target.
     #[clap(
@@ -49,6 +48,10 @@ struct MyArgs {
     /// RDS user identifier (really the AWS secret identifier).
     #[clap(long = "db-user-identifier", short = 'u')]
     user_id: Option<String>,
+
+    /// Output format. One of "csv", "cooked", "raw"
+    #[clap(default_value = "csv", long = "format", short = 'f')]
+    format: String,
 
     /// SQL query.
     query: String,
@@ -107,15 +110,9 @@ struct MyArns {
 }
 
 /// Extract a name for each column
-fn format_header<'a>(result: &'a SqlStatementResult) -> impl Iterator<Item = &'a str> {
+fn format_header<'a>(result: &'a ExecuteStatementResponse) -> impl Iterator<Item = &'a str> {
     // This seems pretty crazed...
     result
-        .result_frame
-        .as_ref()
-        .unwrap_or(&EMPTY_RESULT_FRAME)
-        .result_set_metadata
-        .as_ref()
-        .unwrap_or(&EMPTY_RESULT_SET_METADATA)
         .column_metadata
         .as_ref()
         .map_or(&[][..], |x| &**x)
@@ -130,64 +127,53 @@ fn format_header<'a>(result: &'a SqlStatementResult) -> impl Iterator<Item = &'a
             }
         })
 }
-/// The incoming Value data here is unfortunate.
+
+/// The incoming Field data here is unfortunate.
 /// The actual data structure _allows_ for multiple values.
 /// I presume that, at least normally, only one value will be set.
 /// This code will _work_, if maybe not well, even if more than one
 /// value is set.
-fn format_value(value: &Value) -> String {
+fn format_value(value: &Field) -> String {
     let mut string = String::new();
-    if let Some(ref array_values) = value.array_values {
-        string.push_str(&format!("{:?}", array_values));
-    };
-    if let Some(ref big_int_value) = value.big_int_value {
-        string.push_str(&format!("{:?}", big_int_value));
-    };
-    if let Some(ref bit_value) = value.bit_value {
-        string.push_str(&format!("{:?}", bit_value));
+    if let Some(ref array_value) = value.array_value {
+        string.push_str(&format!("{:?}", array_value));
     };
     if let Some(ref blob_value) = value.blob_value {
         string.push_str(&format!("{:?}", blob_value));
     };
+    if let Some(ref boolean_value) = value.boolean_value {
+        string.push_str(&format!("{:?}", boolean_value));
+    };
     if let Some(ref double_value) = value.double_value {
         string.push_str(&format!("{:?}", double_value));
-    };
-    if let Some(ref int_value) = value.int_value {
-        string.push_str(&format!("{:?}", int_value));
     };
     if let Some(ref _is_null) = value.is_null {
         string.push_str("NULL");
     };
-    if let Some(ref real_value) = value.real_value {
-        string.push_str(&format!("{:?}", real_value));
+    if let Some(ref long_value) = value.long_value {
+        string.push_str(&format!("{:?}", long_value));
     };
     if let Some(ref string_value) = value.string_value {
         string.push_str(&string_value);
     };
-    if let Some(ref struct_value) = value.struct_value {
-        string.push_str(&format!("{:?}", struct_value));
-    };
     string
 }
 
-fn one_row(values: &[Value]) -> impl Iterator<Item = String> + '_ {
+fn one_row(values: &[Field]) -> impl Iterator<Item = String> + '_ {
     values.iter().map(|value| format_value(&value))
 }
 
 /// Return an iterator of iterators of strings
 fn format_rows(
-    result: &SqlStatementResult,
+    result: &ExecuteStatementResponse,
 ) -> impl Iterator<Item = impl Iterator<Item = String> + '_> {
     // This seems pretty crazed...
     result
-        .result_frame
-        .as_ref()
-        .unwrap_or(&EMPTY_RESULT_FRAME)
         .records
         .as_ref()
         .map_or(&[][..], |x| &**x)
         .iter()
-        .map(|record| one_row(record.values.as_ref().map_or(&[][..], |x| &**x)))
+        .map(|record| one_row(record))
 }
 
 fn cluster_ids(db_clusters: &[DBCluster]) -> Vec<String> {
@@ -341,6 +327,84 @@ async fn get_arns(
     })
 }
 
+fn csv_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
+    if let Some(number_of_records_updated) = result.number_of_records_updated {
+        if number_of_records_updated >= 0 {
+            println!("number_of_records_updated: {}", number_of_records_updated)
+        }
+    }
+    let mut wtr = csv::Writer::from_writer(stdout());
+    wtr.write_record(format_header(result))?;
+    for row in format_rows(result) {
+        wtr.write_record(row)?;
+    }
+    Ok(())
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+struct CookedResponse {
+    /// The number of records updated by the request.
+    #[serde(rename = "numberOfRecordsUpdated")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number_of_records_updated: Option<i64>,
+
+    /// The records returned by the SQL statement.
+    pub records: Vec<HashMap<String, Value>>,
+}
+
+fn field_value(field: &Field) -> Value {
+    if let Some(ref boolean_value) = field.boolean_value {
+        Value::from(*boolean_value)
+    } else if let Some(ref double_value) = field.double_value {
+        Value::from(*double_value)
+    } else if let Some(ref _is_null) = field.is_null {
+        Value::Null
+    } else if let Some(ref long_value) = field.long_value {
+        Value::from(*long_value)
+    } else if let Some(ref string_value) = field.string_value {
+        Value::from(string_value.clone())
+    } else {
+        // Punt!
+        Value::Null
+    }
+}
+
+fn annotate_fields(header: &[&str], record: &[Field]) -> HashMap<String, Value> {
+    header
+        .iter()
+        .zip(record.iter())
+        .map(|(key, field)| ((*key).to_owned(), field_value(field)))
+        .collect()
+}
+
+fn cook_response(result: &ExecuteStatementResponse) -> CookedResponse {
+    let header: Vec<&str> = format_header(result).collect();
+    CookedResponse {
+        number_of_records_updated: result.number_of_records_updated,
+        records: result
+            .records
+            .as_ref()
+            .map_or(&[][..], |x| &**x)
+            .iter()
+            .map(|record| annotate_fields(&header, record))
+            .collect(),
+    }
+}
+
+fn cooked_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
+    serde_json::to_writer_pretty(stdout(), &cook_response(result))?;
+    // We'd like to write out a final newline. Ignore any failure to do so.
+    let _result = stdout().write(b"\n");
+    Ok(())
+}
+
+fn raw_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
+    serde_json::to_writer_pretty(stdout(), result)?;
+    // We'd like to write out a final newline. Ignore any failure to do so.
+    let _result = stdout().write(b"\n");
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ExitFailure> {
     let args = MyArgs::parse();
@@ -350,40 +414,35 @@ async fn main() -> Result<(), ExitFailure> {
         .output(&log::Level::Trace, loggerv::Output::Stderr)
         .verbosity(args.verbose as u64)
         .init()?;
-    env::set_var("AWS_PROFILE", args.profile);
+    // FIXME: Better to give an error message here.
+    let output_format = args.format.parse().unwrap_or(Format::Csv);
+    if let Some(aws_profile) = args.profile {
+        env::set_var("AWS_PROFILE", aws_profile);
+    };
     let region = Region::from_str(&args.region)?;
     let rds_data_client = RdsDataClient::new(region.clone());
 
-    let my_arns = get_arns(&region, &args.db_id, &args.user_id)
-        .await?;
+    let my_arns = get_arns(&region, &args.db_id, &args.user_id).await?;
 
-    let execute_sql_request = ExecuteSqlRequest {
-        aws_secret_store_arn: my_arns.aws_secret_store_arn,
-        db_cluster_or_instance_arn: my_arns.db_cluster_or_instance_arn,
-        sql_statements: args.query,
+    let execute_sql_request = ExecuteStatementRequest {
+        include_result_metadata: Some(true),
+        resource_arn: my_arns.db_cluster_or_instance_arn,
+        secret_arn: my_arns.aws_secret_store_arn,
+        sql: args.query,
         ..Default::default()
     };
 
     info!("{:?}", execute_sql_request);
     // The result that comes back is fairly intense.
     // I don't know how to take it apart in a non-tedious way.
-    let execute_sql_response = rds_data_client
-        .execute_sql(execute_sql_request)
+    let execute_statement_response = rds_data_client
+        .execute_statement(execute_sql_request)
         .await?;
-    info!("{:?}", execute_sql_response);
-    if let Some(results) = execute_sql_response.sql_statement_results {
-        for result in &results {
-            if let Some(number_of_records_updated) = result.number_of_records_updated {
-                if number_of_records_updated >= 0 {
-                    println!("number_of_records_updated: {}", number_of_records_updated)
-                }
-            }
-            let mut wtr = csv::Writer::from_writer(stdout());
-            wtr.write_record(format_header(result))?;
-            for row in format_rows(result) {
-                wtr.write_record(row)?;
-            }
-        }
+    info!("{:?}", execute_statement_response);
+    match output_format {
+        Format::Csv => csv_output(&execute_statement_response)?,
+        Format::Cooked => cooked_output(&execute_statement_response)?,
+        Format::Raw => raw_output(&execute_statement_response)?,
     };
     Ok(())
 }
