@@ -11,10 +11,11 @@ use rusoto_rds_data::{
 use rusoto_secretsmanager::{
     ListSecretsError, ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
 };
-use serde::{Deserialize, Serialize};
+use serde::ser::SerializeMap;
+use serde::{Serialize, Serializer};
 use serde_json::Value;
 use snafu::Snafu;
-use std::{collections::HashMap, env, io::stdout, io::Write, str::FromStr};
+use std::{env, io::stdout, io::Write, str::FromStr};
 
 #[enumeration(case_insensitive)]
 #[derive(ArgEnum, Copy, Clone, Debug, PartialEq, enum_utils::FromStr)]
@@ -329,7 +330,7 @@ async fn get_arns(
 
 fn csv_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
     if let Some(number_of_records_updated) = result.number_of_records_updated {
-        if number_of_records_updated >= 0 {
+        if number_of_records_updated > 0 || result.column_metadata.is_none() {
             println!("number_of_records_updated: {}", number_of_records_updated)
         }
     }
@@ -341,7 +342,37 @@ fn csv_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
     Ok(())
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub trait SerdeRecord: Sized {
+    fn serialize_record<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer;
+}
+
+impl SerdeRecord for Vec<(String, Value)> {
+    fn serialize_record<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.len()))?;
+        for (k, v) in self {
+            map.serialize_entry(k, v)?;
+        }
+        map.end()
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+/// We use a vector of tuples, not some map, to preserve order and retain fields
+/// which happen to have the same name. Many consumers of the JSON output from
+/// here may struggle when field names are repeated, but I rather output them as
+/// given instead of silently dropping them.
+struct Record {
+    // Serialize as a map, preserving order and allowing for repeated keys.
+    #[serde(serialize_with = "SerdeRecord::serialize_record", default, flatten)]
+    record: Vec<(String, Value)>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 struct CookedResponse {
     /// The number of records updated by the request.
     #[serde(rename = "numberOfRecordsUpdated")]
@@ -349,7 +380,7 @@ struct CookedResponse {
     number_of_records_updated: Option<i64>,
 
     /// The records returned by the SQL statement.
-    pub records: Vec<HashMap<String, Value>>,
+    pub records: Vec<Record>,
 }
 
 fn field_value(field: &Field) -> Value {
@@ -369,12 +400,14 @@ fn field_value(field: &Field) -> Value {
     }
 }
 
-fn annotate_fields(header: &[&str], record: &[Field]) -> HashMap<String, Value> {
-    header
-        .iter()
-        .zip(record.iter())
-        .map(|(key, field)| ((*key).to_owned(), field_value(field)))
-        .collect()
+fn annotate_fields(header: &[&str], record: &[Field]) -> Record {
+    Record {
+        record: header
+            .iter()
+            .zip(record.iter())
+            .map(|(key, field)| ((*key).to_owned(), field_value(field)))
+            .collect(),
+    }
 }
 
 fn cook_response(result: &ExecuteStatementResponse) -> CookedResponse {
