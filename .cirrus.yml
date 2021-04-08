@@ -54,10 +54,9 @@ linux_x68_64_task:
   setup_script:
     - echo NOPE apt-get update
     - echo NOPE apt-get --yes install musl-tools
-    - rustup target add x86_64-unknown-linux-musl
   build_script:
-    - cargo build --verbose --release --target x86_64-unknown-linux-musl
-    - mv target/x86_64-unknown-linux-musl/release/$BASENAME $BASENAME.$CIRRUS_OS.x86_64
+    - cargo build --verbose --release --target x86_64-unknown-linux-gnu
+    - mv target/x86_64-unknown-linux-gnu/release/$BASENAME $BASENAME.$CIRRUS_OS.x86_64
     - file $BASENAME.$CIRRUS_OS.x86_64
     - ldd $BASENAME.$CIRRUS_OS.x86_64
   binary_artifacts:
