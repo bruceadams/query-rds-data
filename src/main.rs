@@ -29,7 +29,7 @@ enum Format {
 #[derive(Clap, Clone, Debug)]
 #[clap(global_setting = ColoredHelp)]
 struct MyArgs {
-    /// AWS source profile to use. This name references an entry in ~/.aws/credentials
+    /// AWS source profile to use. This name references an entry in ~/.aws/config
     #[clap(long = "aws-profile", short = 'p')]
     profile: Option<String>,
 
@@ -43,11 +43,11 @@ struct MyArgs {
     region: String,
 
     /// RDS database identifier.
-    #[clap(long = "db-cluster-identifier", short = 'c')]
+    #[clap(env = "AWS_RDS_CLUSTER", long = "db-cluster-identifier", short = 'c')]
     db_id: Option<String>,
 
     /// RDS user identifier (really the AWS secret identifier).
-    #[clap(long = "db-user-identifier", short = 'u')]
+    #[clap(env = "AWS_RDS_USER", long = "db-user-identifier", short = 'u')]
     user_id: Option<String>,
 
     /// Output format. One of "csv", "cooked", "raw"
