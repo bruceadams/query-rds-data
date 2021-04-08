@@ -1,6 +1,6 @@
 # Query AWS RDS Data from the command line
 
-[![Build Status](https://img.shields.io/travis/com/bruceadams/query-rds-data?logo=travis)](https://travis-ci.com/bruceadams/query-rds-data)
+[![Build Status](https://api.cirrus-ci.com/github/bruceadams/query-rds-data.svg)](https://cirrus-ci.com/github/bruceadams/query-rds-data)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v1.4%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 [![Apache License](https://img.shields.io/github/license/bruceadams/query-rds-data?logo=apache)](LICENSE)
 [![Github Release](https://img.shields.io/github/v/release/bruceadams/query-rds-data?logo=github)](https://github.com/bruceadams/query-rds-data/releases)
@@ -10,7 +10,7 @@
 
 ## Installing
 
-Prebuilt binaries for some major platforms are available under
+Prebuilt binaries for several platforms are available under
 [Github releases](https://github.com/bruceadams/query-rds-data/releases).
 
 On macOS, the prebuilt binary can be installed using [Homebrew](https://brew.sh).
@@ -36,36 +36,44 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 0.5.2
+query-rds-data 1.0.0
 Query an Amazon RDS database
 
 USAGE:
-    query-rds-data [FLAGS] [OPTIONS] <query> --aws-profile <profile>
+    query-rds-data [FLAGS] [OPTIONS] <query>
+
+ARGS:
+    <query>    SQL query
 
 FLAGS:
     -h, --help       Prints help information
-    -V, --version    Prints version information
     -v, --verbose    Increase logging verbosity (-v, -vv, -vvv, etc)
+    -V, --version    Prints version information
 
 OPTIONS:
-    -c, --db-cluster-identifier <db-id>    RDS database identifier.
+    -c, --db-cluster-identifier <db-id>
+            RDS database identifier [env: AWS_RDS_CLUSTER=]
+
+    -f, --format <format>
+            Output format. One of "csv", "cooked", "raw" [default: csv]
+
     -p, --aws-profile <profile>
-            AWS source profile to use. This name references an entry
-            in ~/.aws/credentials [env: AWS_PROFILE=]
+            AWS source profile to use. This name references an entry in
+            ~/.aws/config
+
     -r, --aws-region <region>
-            AWS region to target. [env: AWS_DEFAULT_REGION=]
-            [default: us-east-1]
+            AWS region to target [env: AWS_DEFAULT_REGION=] [default:
+            us-east-1]
+
     -u, --db-user-identifier <user-id>
-            RDS user identifier (really the AWS secret identifier).
-
-
-ARGS:
-    <query>    SQL query.
+            RDS user identifier (really the AWS secret identifier)
+            [env: AWS_RDS_USER=]
 ```
 
 ## Error messages
 
-I hope that the error messages from `query-rds-data` are helpful for figuring out what went wrong and how to address the issue.
+I hope that the error messages from `query-rds-data` are helpful
+for figuring out what went wrong and how to address the issue.
 
 ```bash
 # No RDS instances exist
