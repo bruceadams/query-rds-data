@@ -18,7 +18,7 @@ travis-ci = { repository = "bruceadams/query-rds-data" }
 csv = "1.1.6"
 exitfailure = "0.5.1"
 enum-utils = "0.1.2"
-futures = "0.3.13"
+futures = "0.3.14"
 log = "0.4.14"
 loggerv = "0.7.2"
 rusoto_core = "0.46.0"
