@@ -17,8 +17,8 @@ use serde_json::Value;
 use snafu::Snafu;
 use std::{env, io::stdout, io::Write, str::FromStr};
 
-#[enumeration(case_insensitive)]
 #[derive(ArgEnum, Copy, Clone, Debug, PartialEq, enum_utils::FromStr)]
+#[enumeration(case_insensitive)]
 enum Format {
     Csv,
     Cooked,
@@ -53,6 +53,10 @@ struct MyArgs {
     /// Output format. One of "csv", "cooked", "raw"
     #[clap(default_value = "csv", long = "format", short = 'f')]
     format: String,
+
+    /// Database name.
+    #[clap(env = "AWS_RDS_DATABASE", long = "database", short = 'd')]
+    database: Option<String>,
 
     /// SQL query.
     query: String,
@@ -462,6 +466,7 @@ async fn main() -> Result<(), ExitFailure> {
         resource_arn: my_arns.db_cluster_or_instance_arn,
         secret_arn: my_arns.aws_secret_store_arn,
         sql: args.query,
+        database: args.database,
         ..Default::default()
     };
 

@@ -36,7 +36,7 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 1.0.0
+query-rds-data
 Query an Amazon RDS database
 
 USAGE:
@@ -51,6 +51,9 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
+    -d, --database <database>
+            Database name [env: AWS_RDS_DATABASE=]
+
     -c, --db-cluster-identifier <db-id>
             RDS database identifier [env: AWS_RDS_CLUSTER=]
 
