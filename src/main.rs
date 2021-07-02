@@ -7,6 +7,7 @@ use rusoto_core::{region::Region, RusotoError};
 use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
 use rusoto_rds_data::{
     ExecuteStatementRequest, ExecuteStatementResponse, Field, RdsData, RdsDataClient,
+    ResultSetOptions,
 };
 use rusoto_secretsmanager::{
     ListSecretsError, ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
@@ -467,6 +468,9 @@ async fn main() -> Result<(), ExitFailure> {
         secret_arn: my_arns.aws_secret_store_arn,
         sql: args.query,
         database: args.database,
+        result_set_options: Some(ResultSetOptions {
+            decimal_return_type: Some("STRING".to_string()),
+        }),
         ..Default::default()
     };
 
