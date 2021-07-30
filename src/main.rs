@@ -299,7 +299,10 @@ async fn get_arns(
     requested_user_id: &Option<String>,
 ) -> Result<MyArns, Error> {
     let describe_db_clusters_message = DescribeDBClustersMessage::default();
-    let list_secrets_request = ListSecretsRequest::default();
+    let list_secrets_request = ListSecretsRequest {
+        max_results: Some(100),
+        ..Default::default()
+    };
 
     let rds_client = RdsClient::new(region.clone());
     let secrets_manager_client = SecretsManagerClient::new(region.clone());
@@ -459,18 +462,20 @@ async fn main() -> Result<(), ExitFailure> {
     };
     let region = Region::from_str(&args.region)?;
     let rds_data_client = RdsDataClient::new(region.clone());
-
-    let my_arns = get_arns(&region, &args.db_id, &args.user_id).await?;
-
+    let MyArns {
+        aws_secret_store_arn: secret_arn,
+        db_cluster_or_instance_arn: resource_arn,
+    } = get_arns(&region, &args.db_id, &args.user_id).await?;
+    let result_set_options = Some(ResultSetOptions {
+        decimal_return_type: Some("STRING".to_string()),
+    });
     let execute_sql_request = ExecuteStatementRequest {
         include_result_metadata: Some(true),
-        resource_arn: my_arns.db_cluster_or_instance_arn,
-        secret_arn: my_arns.aws_secret_store_arn,
+        resource_arn,
+        secret_arn,
         sql: args.query,
         database: args.database,
-        result_set_options: Some(ResultSetOptions {
-            decimal_return_type: Some("STRING".to_string()),
-        }),
+        result_set_options,
         ..Default::default()
     };
 
