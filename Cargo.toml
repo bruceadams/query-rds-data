@@ -34,5 +34,5 @@ version = "0.47.0"
 features = ["serialize_structs"]
 
 [dependencies.tokio]
-version = "1.9.0"
+version = "1.10.0"
 features = ["macros", "rt-multi-thread"]
