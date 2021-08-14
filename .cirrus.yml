@@ -1,6 +1,6 @@
 env:
   BASENAME: query-rds-data
-  GITHUB_TOKEN: ENCRYPTED[1c2ef2877c7f171e40a831f61367e810b57010d6b2eded04f68177e3ec096c3c85619be02f3f0c081fd1eb9b64dd15bb]
+  GITHUB_TOKEN: ENCRYPTED[2daeddfc1e5f9979684f4f15e8c937e43722a18454bb2ed21b678784ad779413df9a0bd110d1d02eb0dce622be7d8108]
 
 macos_universal_task:
   macos_instance:
