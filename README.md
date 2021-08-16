@@ -36,41 +36,42 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data
-Query an Amazon RDS database
+query-rds-data 1.2.2
+
+Query AWS RDS Data from the command line
 
 USAGE:
-    query-rds-data [FLAGS] [OPTIONS] <query>
+    query-rds-data [FLAGS] [OPTIONS] <QUERY>
 
 ARGS:
-    <query>    SQL query
+    <QUERY>    SQL query
 
 FLAGS:
-    -h, --help       Prints help information
+    -h, --help       Print help information
     -v, --verbose    Increase logging verbosity (-v, -vv, -vvv, etc)
-    -V, --version    Prints version information
+    -V, --version    Print version information
 
 OPTIONS:
-    -d, --database <database>
+    -c, --db-cluster-identifier <DB_ID>
+            RDS cluster identifier [env: AWS_RDS_CLUSTER=]
+
+    -d, --database <DATABASE>
             Database name [env: AWS_RDS_DATABASE=]
 
-    -c, --db-cluster-identifier <db-id>
-            RDS database identifier [env: AWS_RDS_CLUSTER=]
+    -f, --format <FORMAT>
+            Output format [default: csv] [possible values: csv, cooked, raw]
 
-    -f, --format <format>
-            Output format. One of "csv", "cooked", "raw" [default: csv]
-
-    -p, --aws-profile <profile>
+    -p, --aws-profile <PROFILE>
             AWS source profile to use. This name references an entry in
-            ~/.aws/config
+            ~/.aws/config [env: AWS_PROFILE=]
 
-    -r, --aws-region <region>
-            AWS region to target [env: AWS_DEFAULT_REGION=] [default:
-            us-east-1]
+    -r, --aws-region <REGION>
+            AWS region to target [env: AWS_DEFAULT_REGION=] [default: us-
+            east-1]
 
-    -u, --db-user-identifier <user-id>
-            RDS user identifier (really the AWS secret identifier)
-            [env: AWS_RDS_USER=]
+    -u, --db-user-identifier <USER_ID>
+            RDS user identifier (really the AWS secret identifier) [env:
+            AWS_RDS_USER=]
 ```
 
 ## Error messages

@@ -1,6 +1,6 @@
 [package]
 name = "query-rds-data"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["Bruce Adams <bruce.adams@acm.org>"]
 edition = "2018"
 categories = ["database", "command-line-utilities"]
@@ -14,7 +14,6 @@ repository = "https://github.com/bruceadams/query-rds-data"
 [dependencies]
 csv = "1.1.6"
 exitfailure = "0.5.1"
-enum-utils = "0.1.2"
 futures = "0.3.16"
 log = "0.4.14"
 loggerv = "0.7.2"

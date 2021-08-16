@@ -1,4 +1,4 @@
-use clap::{AppSettings::ColoredHelp, ArgEnum, Clap};
+use clap::{crate_description, crate_version, AppSettings::ColoredHelp, ArgEnum, Clap};
 use exitfailure::ExitFailure;
 use futures::join;
 use futures::prelude::*;
@@ -18,20 +18,21 @@ use serde_json::Value;
 use snafu::Snafu;
 use std::{env, io::stdout, io::Write, str::FromStr};
 
-#[derive(ArgEnum, Copy, Clone, Debug, PartialEq, enum_utils::FromStr)]
-#[enumeration(case_insensitive)]
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
 enum Format {
+    /// CSV output, including a header line.
     Csv,
+    /// An array of JSON Objects, {"field_name": field_value, …}.
     Cooked,
+    /// The raw JSON returned by the AWS Data API.
     Raw,
 }
 
-/// Query an Amazon RDS database
 #[derive(Clap, Clone, Debug)]
-#[clap(global_setting = ColoredHelp)]
+#[clap(global_setting = ColoredHelp, about=crate_description!(), version=crate_version!())]
 struct MyArgs {
     /// AWS source profile to use. This name references an entry in ~/.aws/config
-    #[clap(long = "aws-profile", short = 'p')]
+    #[clap(env = "AWS_PROFILE", long = "aws-profile", short = 'p')]
     profile: Option<String>,
 
     /// AWS region to target.
@@ -43,7 +44,7 @@ struct MyArgs {
     )]
     region: String,
 
-    /// RDS database identifier.
+    /// RDS cluster identifier.
     #[clap(env = "AWS_RDS_CLUSTER", long = "db-cluster-identifier", short = 'c')]
     db_id: Option<String>,
 
@@ -51,9 +52,9 @@ struct MyArgs {
     #[clap(env = "AWS_RDS_USER", long = "db-user-identifier", short = 'u')]
     user_id: Option<String>,
 
-    /// Output format. One of "csv", "cooked", "raw"
-    #[clap(default_value = "csv", long = "format", short = 'f')]
-    format: String,
+    /// Output format.
+    #[clap(arg_enum, default_value = "csv", long = "format", short = 'f')]
+    format: Format,
 
     /// Database name.
     #[clap(env = "AWS_RDS_DATABASE", long = "database", short = 'd')]
@@ -160,13 +161,13 @@ fn format_value(value: &Field) -> String {
         string.push_str(&format!("{:?}", long_value));
     };
     if let Some(ref string_value) = value.string_value {
-        string.push_str(&string_value);
+        string.push_str(string_value);
     };
     string
 }
 
 fn one_row(values: &[Field]) -> impl Iterator<Item = String> + '_ {
-    values.iter().map(|value| format_value(&value))
+    values.iter().map(|value| format_value(value))
 }
 
 /// Return an iterator of iterators of strings
@@ -325,7 +326,7 @@ async fn get_arns(
     let secret_list_entry = match list_secrets_response?.secret_list {
         Some(secret_list) => my_secret(
             &db_cluster.db_cluster_resource_id.unwrap(),
-            &requested_user_id,
+            requested_user_id,
             &secret_list,
         )?,
         None => return Err(Error::SecretNotFound {}),
@@ -455,8 +456,7 @@ async fn main() -> Result<(), ExitFailure> {
         .output(&log::Level::Trace, loggerv::Output::Stderr)
         .verbosity(args.verbose as u64)
         .init()?;
-    // FIXME: Better to give an error message here.
-    let output_format = args.format.parse().unwrap_or(Format::Csv);
+    let output_format = args.format;
     if let Some(aws_profile) = args.profile {
         env::set_var("AWS_PROFILE", aws_profile);
     };
