@@ -14,7 +14,7 @@ repository = "https://github.com/bruceadams/query-rds-data"
 [dependencies]
 csv = "1.1.6"
 exitfailure = "0.5.1"
-futures = "0.3.16"
+futures = "0.3.17"
 log = "0.4.14"
 loggerv = "0.7.2"
 rusoto_core = "0.47.0"
