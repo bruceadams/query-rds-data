@@ -1,4 +1,4 @@
-use clap::{crate_description, crate_version, AppSettings::ColoredHelp, ArgEnum, Clap};
+use clap::{crate_description, crate_version, ArgEnum, Parser};
 use exitfailure::ExitFailure;
 use futures::join;
 use futures::prelude::*;
@@ -28,43 +28,38 @@ enum Format {
     Raw,
 }
 
-#[derive(Clap, Clone, Debug)]
-#[clap(global_setting = ColoredHelp, about=crate_description!(), version=crate_version!())]
+#[derive(Clone, Debug, Parser)]
+#[clap(about=crate_description!(), version=crate_version!())]
 struct MyArgs {
     /// AWS source profile to use. This name references an entry in ~/.aws/config
-    #[clap(env = "AWS_PROFILE", long = "aws-profile", short = 'p')]
+    #[clap(env = "AWS_PROFILE", long, short)]
     profile: Option<String>,
 
     /// AWS region to target.
-    #[clap(
-        default_value = "us-east-1",
-        env = "AWS_DEFAULT_REGION",
-        long = "aws-region",
-        short = 'r'
-    )]
+    #[clap(default_value = "us-east-1", env = "AWS_DEFAULT_REGION", long, short)]
     region: String,
 
     /// RDS cluster identifier.
-    #[clap(env = "AWS_RDS_CLUSTER", long = "db-cluster-identifier", short = 'c')]
-    db_id: Option<String>,
+    #[clap(env = "AWS_RDS_CLUSTER", long = "db-cluster-identifier", short)]
+    cluster_id: Option<String>,
 
     /// RDS user identifier (really the AWS secret identifier).
-    #[clap(env = "AWS_RDS_USER", long = "db-user-identifier", short = 'u')]
+    #[clap(env = "AWS_RDS_USER", long = "db-user-identifier", short)]
     user_id: Option<String>,
 
     /// Output format.
-    #[clap(arg_enum, default_value = "csv", long = "format", short = 'f')]
+    #[clap(arg_enum, default_value = "csv", long, short)]
     format: Format,
 
     /// Database name.
-    #[clap(env = "AWS_RDS_DATABASE", long = "database", short = 'd')]
+    #[clap(env = "AWS_RDS_DATABASE", long, short)]
     database: Option<String>,
 
     /// SQL query.
     query: String,
 
     /// Increase logging verbosity (-v, -vv, -vvv, etc)
-    #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
+    #[clap(long, parse(from_occurrences), short)]
     verbose: usize,
 }
 
@@ -74,12 +69,12 @@ enum Error {
     DBClusterLookup {
         source: RusotoError<DescribeDBClustersError>,
     },
-    #[snafu(display("Failed to find any RDS databases"))]
+    #[snafu(display("Failed to find any RDS clusters"))]
     DBClusterLookupEmpty {},
-    #[snafu(display("No DBs found"))]
+    #[snafu(display("No clusters found"))]
     DBClusterEmpty {},
     #[snafu(display(
-        "No DB matched \"{}\", available ids are {:?}",
+        "No cluster matched \"{}\", available ids are {:?}",
         db_cluster_identifier,
         available_ids
     ))]
@@ -87,7 +82,7 @@ enum Error {
         db_cluster_identifier: String,
         available_ids: Vec<String>,
     },
-    #[snafu(display("Multiple DBs found, please specify one of {:?}", available_ids))]
+    #[snafu(display("Multiple clusters found, please specify one of {:?}", available_ids))]
     DBClusterMultiple { available_ids: Vec<String> },
 
     #[snafu(display("Failed to lookup secrets: {}", source))]
@@ -96,10 +91,10 @@ enum Error {
     },
     #[snafu(display("Failed to find any secrets"))]
     SecretNotFound {},
-    #[snafu(display("No DB user secrets found"))]
+    #[snafu(display("No cluster user secrets found"))]
     SecretsUsersEmpty {},
     #[snafu(display(
-        "No DB user matched \"{}\", available users are {:?}",
+        "No cluster user matched \"{}\", available users are {:?}",
         db_user_id,
         available_ids
     ))]
@@ -107,7 +102,10 @@ enum Error {
         db_user_id: String,
         available_ids: Vec<String>,
     },
-    #[snafu(display("Multiple DB users found, please specify one of {:?}", available_ids))]
+    #[snafu(display(
+        "Multiple cluster users found, please specify one of {:?}",
+        available_ids
+    ))]
     SecretsUsersMultiple { available_ids: Vec<String> },
 }
 
@@ -465,7 +463,7 @@ async fn main() -> Result<(), ExitFailure> {
     let MyArns {
         aws_secret_store_arn: secret_arn,
         db_cluster_or_instance_arn: resource_arn,
-    } = get_arns(&region, &args.db_id, &args.user_id).await?;
+    } = get_arns(&region, &args.cluster_id, &args.user_id).await?;
     let result_set_options = Some(ResultSetOptions {
         decimal_return_type: Some("STRING".to_string()),
     });
