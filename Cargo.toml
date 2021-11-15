@@ -21,7 +21,7 @@ rusoto_core = "0.47.0"
 rusoto_rds = "0.47.0"
 rusoto_secretsmanager = "0.47.0"
 serde = "1.0.130"
-serde_json = "1.0.68"
+serde_json = "1.0.70"
 snafu = "0.6.10"
 
 [dependencies.clap]
