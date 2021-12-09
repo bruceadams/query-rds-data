@@ -165,7 +165,7 @@ fn format_value(value: &Field) -> String {
 }
 
 fn one_row(values: &[Field]) -> impl Iterator<Item = String> + '_ {
-    values.iter().map(|value| format_value(value))
+    values.iter().map(format_value)
 }
 
 /// Return an iterator of iterators of strings
