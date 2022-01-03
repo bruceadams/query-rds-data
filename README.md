@@ -36,7 +36,7 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 1.2.2
+query-rds-data 1.2.3
 
 Query AWS RDS Data from the command line
 

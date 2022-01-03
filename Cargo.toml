@@ -1,8 +1,8 @@
 [package]
 name = "query-rds-data"
-version = "1.2.2"
+version = "1.2.3"
 authors = ["Bruce Adams <bruce.adams@acm.org>"]
-edition = "2018"
+edition = "2021"
 categories = ["database", "command-line-utilities"]
 description = "Query AWS RDS Data from the command line"
 homepage = "https://github.com/bruceadams/query-rds-data"
@@ -20,13 +20,13 @@ loggerv = "0.7.2"
 rusoto_core = "0.47.0"
 rusoto_rds = "0.47.0"
 rusoto_secretsmanager = "0.47.0"
-serde = "1.0.132"
-serde_json = "1.0.73"
+serde = "1.0.133"
+serde_json = "1.0.74"
 snafu = "0.6.10"
 
 [dependencies.clap]
 features = ["derive", "env", "cargo", "wrap_help"]
-version = "3.0.0-rc.8"
+version = "3.0.0"
 
 [dependencies.rusoto_rds_data]
 version = "0.47.0"
