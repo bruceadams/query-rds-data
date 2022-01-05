@@ -26,7 +26,7 @@ snafu = "0.6.10"
 
 [dependencies.clap]
 features = ["derive", "env", "cargo", "wrap_help"]
-version = "3.0.0"
+version = "3.0.4"
 
 [dependencies.rusoto_rds_data]
 version = "0.47.0"
