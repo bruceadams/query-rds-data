@@ -1,31 +1,29 @@
+use aws_sdk_rds::{error::DescribeDBClustersError, model::DbCluster, types::SdkError};
+use aws_sdk_rdsdata::{
+    model::{DecimalReturnType, Field, ResultSetOptions},
+    output::ExecuteStatementOutput,
+};
+use aws_sdk_secretsmanager::{error::ListSecretsError, model::SecretListEntry};
+use aws_types::sdk_config::SdkConfig;
 use clap::{crate_description, crate_version, ArgEnum, Parser};
 use exitfailure::ExitFailure;
 use futures::join;
 use futures::prelude::*;
 use log::info;
-use rusoto_core::{region::Region, RusotoError};
-use rusoto_rds::{DBCluster, DescribeDBClustersError, DescribeDBClustersMessage, Rds, RdsClient};
-use rusoto_rds_data::{
-    ExecuteStatementRequest, ExecuteStatementResponse, Field, RdsData, RdsDataClient,
-    ResultSetOptions,
-};
-use rusoto_secretsmanager::{
-    ListSecretsError, ListSecretsRequest, SecretListEntry, SecretsManager, SecretsManagerClient,
-};
-use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
+use serde::{ser::SerializeMap, Serialize, Serializer};
 use serde_json::Value;
 use snafu::Snafu;
-use std::{env, io::stdout, io::Write, str::FromStr};
+use std::{
+    env,
+    io::{stdout, Write},
+};
 
 #[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
 enum Format {
     /// CSV output, including a header line.
     Csv,
     /// An array of JSON Objects, {"field_name": field_value, …}.
-    Cooked,
-    /// The raw JSON returned by the AWS Data API.
-    Raw,
+    Json,
 }
 
 #[derive(Clone, Debug, Parser)]
@@ -67,7 +65,7 @@ struct MyArgs {
 enum Error {
     #[snafu(display("Failed to lookup clusters: {}", source))]
     DBClusterLookup {
-        source: RusotoError<DescribeDBClustersError>,
+        source: SdkError<DescribeDBClustersError>,
     },
     #[snafu(display("Failed to find any RDS clusters"))]
     DBClusterLookupEmpty {},
@@ -86,9 +84,7 @@ enum Error {
     DBClusterMultiple { available_ids: Vec<String> },
 
     #[snafu(display("Failed to lookup secrets: {}", source))]
-    SecretLookup {
-        source: RusotoError<ListSecretsError>,
-    },
+    SecretLookup { source: SdkError<ListSecretsError> },
     #[snafu(display("Failed to find any secrets"))]
     SecretNotFound {},
     #[snafu(display("No cluster user secrets found"))]
@@ -115,7 +111,7 @@ struct MyArns {
 }
 
 /// Extract a name for each column
-fn format_header<'a>(result: &'a ExecuteStatementResponse) -> impl Iterator<Item = &'a str> {
+fn format_header<'a>(result: &'a ExecuteStatementOutput) -> impl Iterator<Item = &'a str> {
     // This seems pretty crazed...
     result
         .column_metadata
@@ -133,35 +129,17 @@ fn format_header<'a>(result: &'a ExecuteStatementResponse) -> impl Iterator<Item
         })
 }
 
-/// The incoming Field data here is unfortunate.
-/// The actual data structure _allows_ for multiple values.
-/// I presume that, at least normally, only one value will be set.
-/// This code will _work_, if maybe not well, even if more than one
-/// value is set.
 fn format_value(value: &Field) -> String {
-    let mut string = String::new();
-    if let Some(ref array_value) = value.array_value {
-        string.push_str(&format!("{:?}", array_value));
-    };
-    if let Some(ref blob_value) = value.blob_value {
-        string.push_str(&format!("{:?}", blob_value));
-    };
-    if let Some(ref boolean_value) = value.boolean_value {
-        string.push_str(&format!("{:?}", boolean_value));
-    };
-    if let Some(ref double_value) = value.double_value {
-        string.push_str(&format!("{:?}", double_value));
-    };
-    if let Some(ref _is_null) = value.is_null {
-        string.push_str("NULL");
-    };
-    if let Some(ref long_value) = value.long_value {
-        string.push_str(&format!("{:?}", long_value));
-    };
-    if let Some(ref string_value) = value.string_value {
-        string.push_str(string_value);
-    };
-    string
+    match value {
+        Field::ArrayValue(inner) => format!("{:?}", *inner),
+        Field::BlobValue(inner) => format!("{:?}", *inner),
+        Field::BooleanValue(inner) => format!("{:?}", *inner),
+        Field::DoubleValue(inner) => format!("{:?}", *inner),
+        Field::IsNull(_) => "NULL".to_owned(),
+        Field::LongValue(inner) => format!("{:?}", *inner),
+        Field::StringValue(inner) => inner.to_owned(),
+        _ => "UNKNOWN".to_owned(), // punt!!
+    }
 }
 
 fn one_row(values: &[Field]) -> impl Iterator<Item = String> + '_ {
@@ -170,7 +148,7 @@ fn one_row(values: &[Field]) -> impl Iterator<Item = String> + '_ {
 
 /// Return an iterator of iterators of strings
 fn format_rows(
-    result: &ExecuteStatementResponse,
+    result: &ExecuteStatementOutput,
 ) -> impl Iterator<Item = impl Iterator<Item = String> + '_> {
     // This seems pretty crazed...
     result
@@ -181,7 +159,7 @@ fn format_rows(
         .map(|record| one_row(record))
 }
 
-fn cluster_ids(db_clusters: &[DBCluster]) -> Vec<String> {
+fn cluster_ids(db_clusters: &[DbCluster]) -> Vec<String> {
     db_clusters
         .iter()
         .map(|db_cluster| {
@@ -196,8 +174,8 @@ fn cluster_ids(db_clusters: &[DBCluster]) -> Vec<String> {
 
 fn my_cluster(
     requested_db_cluster_identifier: &Option<String>,
-    db_clusters: &[DBCluster],
-) -> Result<DBCluster, Error> {
+    db_clusters: &[DbCluster],
+) -> Result<DbCluster, Error> {
     match requested_db_cluster_identifier {
         Some(requested_db_cluster_identifier) => {
             for db_cluster in db_clusters {
@@ -293,25 +271,22 @@ fn my_secret(
 }
 
 async fn get_arns(
-    region: &Region,
+    aws_sdk_config: &SdkConfig,
     requested_db_cluster_identifier: &Option<String>,
     requested_user_id: &Option<String>,
 ) -> Result<MyArns, Error> {
-    let describe_db_clusters_message = DescribeDBClustersMessage::default();
-    let list_secrets_request = ListSecretsRequest {
-        max_results: Some(100),
-        ..Default::default()
-    };
+    let rds_client = aws_sdk_rds::Client::new(aws_sdk_config);
+    let secrets_manager_client = aws_sdk_secretsmanager::Client::new(aws_sdk_config);
 
-    let rds_client = RdsClient::new(region.clone());
-    let secrets_manager_client = SecretsManagerClient::new(region.clone());
-    info!("{:?}", describe_db_clusters_message);
-    info!("{:?}", list_secrets_request);
     let fut1 = rds_client
-        .describe_db_clusters(describe_db_clusters_message)
+        .describe_db_clusters()
+        .max_records(100)
+        .send()
         .map_err(|e| Error::DBClusterLookup { source: e });
     let fut2 = secrets_manager_client
-        .list_secrets(list_secrets_request)
+        .list_secrets()
+        .max_results(100)
+        .send()
         .map_err(|e| Error::SecretLookup { source: e });
 
     let (db_cluster_message, list_secrets_response) = join!(fut1, fut2);
@@ -335,11 +310,12 @@ async fn get_arns(
     })
 }
 
-fn csv_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
-    if let Some(number_of_records_updated) = result.number_of_records_updated {
-        if number_of_records_updated > 0 || result.column_metadata.is_none() {
-            println!("number_of_records_updated: {}", number_of_records_updated)
-        }
+fn csv_output(result: &ExecuteStatementOutput) -> Result<(), ExitFailure> {
+    if result.number_of_records_updated > 0 || result.column_metadata.is_none() {
+        println!(
+            "number_of_records_updated: {}",
+            result.number_of_records_updated
+        )
     }
     let mut wtr = csv::Writer::from_writer(stdout());
     wtr.write_record(format_header(result))?;
@@ -369,10 +345,10 @@ impl SerdeRecord for Vec<(String, Value)> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
-/// We use a vector of tuples, not some map, to preserve order and retain fields
-/// which happen to have the same name. Many consumers of the JSON output from
-/// here may struggle when field names are repeated, but I rather output them as
-/// given instead of silently dropping them.
+/// We use a vector of tuples, not some map, to preserve order and retain
+/// fields which happen to have the same name. Many consumers of the JSON
+/// output from here may struggle when field names are repeated, but I prefer
+/// outputting them as given instead of silently dropping them.
 struct Record {
     // Serialize as a map, preserving order and allowing for repeated keys.
     #[serde(serialize_with = "SerdeRecord::serialize_record", default, flatten)]
@@ -383,27 +359,22 @@ struct Record {
 struct CookedResponse {
     /// The number of records updated by the request.
     #[serde(rename = "numberOfRecordsUpdated")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    number_of_records_updated: Option<i64>,
+    number_of_records_updated: i64,
 
     /// The records returned by the SQL statement.
     pub records: Vec<Record>,
 }
 
 fn field_value(field: &Field) -> Value {
-    if let Some(ref boolean_value) = field.boolean_value {
-        Value::from(*boolean_value)
-    } else if let Some(ref double_value) = field.double_value {
-        Value::from(*double_value)
-    } else if let Some(ref _is_null) = field.is_null {
-        Value::Null
-    } else if let Some(ref long_value) = field.long_value {
-        Value::from(*long_value)
-    } else if let Some(ref string_value) = field.string_value {
-        Value::from(string_value.clone())
-    } else {
-        // Punt!
-        Value::Null
+    match field {
+        Field::ArrayValue(_array_value) => Value::Null, // punt!!
+        Field::BlobValue(_blob_value) => Value::Null,   // punt!!
+        Field::BooleanValue(boolean_value) => Value::from(*boolean_value),
+        Field::DoubleValue(double_value) => Value::from(*double_value),
+        Field::IsNull(_) => Value::Null,
+        Field::LongValue(long_value) => Value::from(*long_value),
+        Field::StringValue(string_value) => Value::from(string_value.clone()),
+        _ => Value::Null, // punt!!
     }
 }
 
@@ -417,7 +388,7 @@ fn annotate_fields(header: &[&str], record: &[Field]) -> Record {
     }
 }
 
-fn cook_response(result: &ExecuteStatementResponse) -> CookedResponse {
+fn cook_response(result: &ExecuteStatementOutput) -> CookedResponse {
     let header: Vec<&str> = format_header(result).collect();
     CookedResponse {
         number_of_records_updated: result.number_of_records_updated,
@@ -431,15 +402,8 @@ fn cook_response(result: &ExecuteStatementResponse) -> CookedResponse {
     }
 }
 
-fn cooked_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
+fn cooked_output(result: &ExecuteStatementOutput) -> Result<(), ExitFailure> {
     serde_json::to_writer_pretty(stdout(), &cook_response(result))?;
-    // We'd like to write out a final newline. Ignore any failure to do so.
-    let _result = stdout().write(b"\n");
-    Ok(())
-}
-
-fn raw_output(result: &ExecuteStatementResponse) -> Result<(), ExitFailure> {
-    serde_json::to_writer_pretty(stdout(), result)?;
     // We'd like to write out a final newline. Ignore any failure to do so.
     let _result = stdout().write(b"\n");
     Ok(())
@@ -455,39 +419,28 @@ async fn main() -> Result<(), ExitFailure> {
         .verbosity(args.verbose as u64)
         .init()?;
     let output_format = args.format;
-    if let Some(aws_profile) = args.profile {
-        env::set_var("AWS_PROFILE", aws_profile);
-    };
-    let region = Region::from_str(&args.region)?;
-    let rds_data_client = RdsDataClient::new(region.clone());
+    let aws_sdk_config = aws_config::load_from_env().await;
     let MyArns {
         aws_secret_store_arn: secret_arn,
         db_cluster_or_instance_arn: resource_arn,
-    } = get_arns(&region, &args.cluster_id, &args.user_id).await?;
-    let result_set_options = Some(ResultSetOptions {
-        decimal_return_type: Some("STRING".to_string()),
-    });
-    let execute_sql_request = ExecuteStatementRequest {
-        include_result_metadata: Some(true),
-        resource_arn,
-        secret_arn,
-        sql: args.query,
-        database: args.database,
-        result_set_options,
-        ..Default::default()
-    };
-
-    info!("{:?}", execute_sql_request);
-    // The result that comes back is fairly intense.
-    // I don't know how to take it apart in a non-tedious way.
-    let execute_statement_response = rds_data_client
-        .execute_statement(execute_sql_request)
+    } = get_arns(&aws_sdk_config, &args.cluster_id, &args.user_id).await?;
+    let rds_data_client = aws_sdk_rdsdata::Client::new(&aws_sdk_config);
+    let result_set_options = ResultSetOptions::builder()
+        .decimal_return_type(DecimalReturnType::String)
+        .build();
+    let execute_statement_output = rds_data_client
+        .execute_statement()
+        .set_database(args.database)
+        .include_result_metadata(true)
+        .resource_arn(resource_arn)
+        .result_set_options(result_set_options)
+        .secret_arn(secret_arn)
+        .sql(args.query)
+        .send()
         .await?;
-    info!("{:?}", execute_statement_response);
+    info!("{:?}", execute_statement_output);
     match output_format {
-        Format::Csv => csv_output(&execute_statement_response)?,
-        Format::Cooked => cooked_output(&execute_statement_response)?,
-        Format::Raw => raw_output(&execute_statement_response)?,
-    };
-    Ok(())
+        Format::Csv => csv_output(&execute_statement_output),
+        Format::Json => cooked_output(&execute_statement_output),
+    }
 }
