@@ -22,7 +22,7 @@ rusoto_rds = "0.48.0"
 rusoto_secretsmanager = "0.48.0"
 serde = "1.0.136"
 serde_json = "1.0.78"
-snafu = "0.6.10"
+snafu = "0.7.1"
 
 [dependencies.clap]
 features = ["derive", "env", "cargo", "wrap_help"]
