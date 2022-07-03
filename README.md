@@ -36,42 +36,45 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 1.2.3
-
+query-rds-data 2.0.1
 Query AWS RDS Data from the command line
 
 USAGE:
-    query-rds-data [FLAGS] [OPTIONS] <QUERY>
+    query-rds-data [OPTIONS] <QUERY>
 
 ARGS:
     <QUERY>    SQL query
 
-FLAGS:
-    -h, --help       Print help information
-    -v, --verbose    Increase logging verbosity (-v, -vv, -vvv, etc)
-    -V, --version    Print version information
-
 OPTIONS:
-    -c, --db-cluster-identifier <DB_ID>
+    -c, --db-cluster-identifier <CLUSTER_ID>
             RDS cluster identifier [env: AWS_RDS_CLUSTER=]
 
     -d, --database <DATABASE>
             Database name [env: AWS_RDS_DATABASE=]
 
     -f, --format <FORMAT>
-            Output format [default: csv] [possible values: csv, cooked, raw]
+            Output format [default: csv] [possible values: csv, json]
 
-    -p, --aws-profile <PROFILE>
-            AWS source profile to use. This name references an entry in
-            ~/.aws/config [env: AWS_PROFILE=]
+    -h, --help
+            Print help information
 
-    -r, --aws-region <REGION>
-            AWS region to target [env: AWS_DEFAULT_REGION=] [default: us-
-            east-1]
+    -p, --profile <PROFILE>
+            AWS source profile to use. This name references an entry
+            in ~/.aws/config [env: AWS_PROFILE=]
+
+    -r, --region <REGION>
+            AWS region to target [env: AWS_DEFAULT_REGION=] [default:
+            us-east-1]
 
     -u, --db-user-identifier <USER_ID>
-            RDS user identifier (really the AWS secret identifier) [env:
-            AWS_RDS_USER=]
+            RDS user identifier (really the AWS secret identifier)
+            [env: AWS_RDS_USER=]
+
+    -v, --verbose
+            Increase logging verbosity (-v, -vv, -vvv, etc)
+
+    -V, --version
+            Print version information
 ```
 
 ## Error messages

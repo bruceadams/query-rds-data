@@ -1,6 +1,6 @@
 [package]
 name = "query-rds-data"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["Bruce Adams <bruce.adams@acm.org>"]
 edition = "2021"
 categories = ["database", "command-line-utilities"]
