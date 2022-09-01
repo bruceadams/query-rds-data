@@ -14,7 +14,7 @@ repository = "https://github.com/bruceadams/query-rds-data"
 [dependencies]
 aws-config = "0.46.0"
 aws-sdk-rds = "0.16.0"
-aws-sdk-rdsdata = "0.16.0"
+aws-sdk-rdsdata = "0.18.0"
 aws-sdk-secretsmanager = "0.16.0"
 aws-types = "0.46.0"
 csv = "1.1.6"
