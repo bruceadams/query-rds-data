@@ -27,7 +27,7 @@ snafu = "0.7.1"
 
 [dependencies.clap]
 features = ["derive", "env", "cargo", "wrap_help"]
-version = "3.2.15"
+version = "4.0.2"
 
 [dependencies.serde]
 features = ["derive"]
