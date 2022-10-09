@@ -5,7 +5,7 @@ use aws_sdk_rdsdata::{
 };
 use aws_sdk_secretsmanager::{error::ListSecretsError, model::SecretListEntry};
 use aws_types::sdk_config::SdkConfig;
-use clap::{crate_description, crate_version, ArgEnum, Parser};
+use clap::{crate_description, crate_version, ArgAction, Parser, ValueEnum};
 use exitfailure::ExitFailure;
 use futures::join;
 use futures::prelude::*;
@@ -13,12 +13,9 @@ use log::info;
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use serde_json::Value;
 use snafu::Snafu;
-use std::{
-    env,
-    io::{stdout, Write},
-};
+use std::io::{stdout, Write};
 
-#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
 enum Format {
     /// CSV output, including a header line.
     Csv,
@@ -46,7 +43,7 @@ struct MyArgs {
     user_id: Option<String>,
 
     /// Output format.
-    #[clap(arg_enum, default_value = "csv", long, short)]
+    #[clap(value_enum, default_value = "csv", long, short)]
     format: Format,
 
     /// Database name.
@@ -57,8 +54,8 @@ struct MyArgs {
     query: String,
 
     /// Increase logging verbosity (-v, -vv, -vvv, etc)
-    #[clap(long, parse(from_occurrences), short)]
-    verbose: usize,
+    #[clap(action = ArgAction::Count, long, short)]
+    verbose: u8,
 }
 
 #[derive(Debug, Snafu)]
