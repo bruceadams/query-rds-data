@@ -1,10 +1,15 @@
-use aws_sdk_rds::{error::DescribeDBClustersError, model::DbCluster, types::SdkError};
-use aws_sdk_rdsdata::{
-    model::{DecimalReturnType, Field, ResultSetOptions},
-    output::ExecuteStatementOutput,
+use std::time::Duration;
+
+use aws_config::{identity::IdentityCache, BehaviorVersion, SdkConfig};
+use aws_sdk_rds::{
+    error::SdkError, operation::describe_db_clusters::DescribeDBClustersError, types::DbCluster,
 };
-use aws_sdk_secretsmanager::{error::ListSecretsError, model::SecretListEntry};
-use aws_types::sdk_config::SdkConfig;
+use aws_sdk_rdsdata::{
+    operation::execute_statement::ExecuteStatementOutput,
+    types::{DecimalReturnType, Field, ResultSetOptions},
+};
+use aws_sdk_secretsmanager::{operation::list_secrets::ListSecretsError, types::SecretListEntry};
+use aws_types::region::Region;
 use clap::{crate_description, crate_version, ArgAction, Parser, ValueEnum};
 use exitfailure::ExitFailure;
 use futures::join;
@@ -31,8 +36,8 @@ struct MyArgs {
     profile: Option<String>,
 
     /// AWS region to target.
-    #[clap(default_value = "us-east-1", env = "AWS_DEFAULT_REGION", long, short)]
-    region: String,
+    #[clap(env = "AWS_REGION", long, short)]
+    region: Option<String>,
 
     /// RDS cluster identifier.
     #[clap(env = "AWS_RDS_CLUSTER", long = "db-cluster-identifier", short)]
@@ -406,6 +411,23 @@ fn cooked_output(result: &ExecuteStatementOutput) -> Result<(), ExitFailure> {
     Ok(())
 }
 
+async fn aws_sdk_config(args: &MyArgs) -> SdkConfig {
+    let base = aws_config::defaults(BehaviorVersion::latest()).identity_cache(
+        IdentityCache::lazy()
+            .load_timeout(Duration::from_secs(90))
+            .build(),
+    );
+    let with_profile = match &args.profile {
+        None => base,
+        Some(profile_name) => base.profile_name(profile_name),
+    };
+    let with_overrides = match &args.region {
+        None => with_profile,
+        Some(region_name) => with_profile.region(Region::new(region_name.clone())),
+    };
+    with_overrides.load().await
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ExitFailure> {
     let args = MyArgs::parse();
@@ -416,12 +438,12 @@ async fn main() -> Result<(), ExitFailure> {
         .verbosity(args.verbose as u64)
         .init()?;
     let output_format = args.format;
-    let aws_sdk_config = aws_config::load_from_env().await;
+    let config = aws_sdk_config(&args).await;
     let MyArns {
         aws_secret_store_arn: secret_arn,
         db_cluster_or_instance_arn: resource_arn,
-    } = get_arns(&aws_sdk_config, &args.cluster_id, &args.user_id).await?;
-    let rds_data_client = aws_sdk_rdsdata::Client::new(&aws_sdk_config);
+    } = get_arns(&config, &args.cluster_id, &args.user_id).await?;
+    let rds_data_client = aws_sdk_rdsdata::Client::new(&config);
     let result_set_options = ResultSetOptions::builder()
         .decimal_return_type(DecimalReturnType::String)
         .build();
