@@ -1,24 +1,22 @@
-use std::time::Duration;
-
+use anyhow::{anyhow, Result};
 use aws_config::{identity::IdentityCache, BehaviorVersion, SdkConfig};
-use aws_sdk_rds::{
-    error::SdkError, operation::describe_db_clusters::DescribeDBClustersError, types::DbCluster,
-};
+use aws_sdk_rds::types::DbCluster;
 use aws_sdk_rdsdata::{
     operation::execute_statement::ExecuteStatementOutput,
     types::{DecimalReturnType, Field, ResultSetOptions},
 };
-use aws_sdk_secretsmanager::{operation::list_secrets::ListSecretsError, types::SecretListEntry};
+use aws_sdk_secretsmanager::types::SecretListEntry;
 use aws_types::region::Region;
-use clap::{crate_description, crate_version, ArgAction, Parser, ValueEnum};
-use exitfailure::ExitFailure;
-use futures::join;
-use futures::prelude::*;
-use log::info;
+use clap::{Parser, ValueEnum};
+use futures::{join, prelude::*};
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use serde_json::Value;
-use snafu::Snafu;
-use std::io::{stdout, Write};
+use std::{
+    io::{stdout, Write},
+    time::Duration,
+};
+use tracing::info;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
 enum Format {
@@ -28,8 +26,10 @@ enum Format {
     Json,
 }
 
+/// You can set the environment variable `RUST_LOG` to
+/// adjust logging, for example `RUST_LOG=trace aws-caller-id`
 #[derive(Clone, Debug, Parser)]
-#[clap(about=crate_description!(), version=crate_version!())]
+#[command(about, author, version)]
 struct MyArgs {
     /// AWS source profile to use. This name references an entry in ~/.aws/config
     #[clap(env = "AWS_PROFILE", long, short)]
@@ -57,54 +57,6 @@ struct MyArgs {
 
     /// SQL query.
     query: String,
-
-    /// Increase logging verbosity (-v, -vv, -vvv, etc)
-    #[clap(action = ArgAction::Count, long, short)]
-    verbose: u8,
-}
-
-#[derive(Debug, Snafu)]
-enum Error {
-    #[snafu(display("Failed to lookup clusters: {}", source))]
-    DBClusterLookup {
-        source: SdkError<DescribeDBClustersError>,
-    },
-    #[snafu(display("Failed to find any RDS clusters"))]
-    DBClusterLookupEmpty {},
-    #[snafu(display("No clusters found"))]
-    DBClusterEmpty {},
-    #[snafu(display(
-        "No cluster matched \"{}\", available ids are {:?}",
-        db_cluster_identifier,
-        available_ids
-    ))]
-    DBClusterNoMatch {
-        db_cluster_identifier: String,
-        available_ids: Vec<String>,
-    },
-    #[snafu(display("Multiple clusters found, please specify one of {:?}", available_ids))]
-    DBClusterMultiple { available_ids: Vec<String> },
-
-    #[snafu(display("Failed to lookup secrets: {}", source))]
-    SecretLookup { source: SdkError<ListSecretsError> },
-    #[snafu(display("Failed to find any secrets"))]
-    SecretNotFound {},
-    #[snafu(display("No cluster user secrets found"))]
-    SecretsUsersEmpty {},
-    #[snafu(display(
-        "No cluster user matched \"{}\", available users are {:?}",
-        db_user_id,
-        available_ids
-    ))]
-    SecretsUsersNoMatch {
-        db_user_id: String,
-        available_ids: Vec<String>,
-    },
-    #[snafu(display(
-        "Multiple cluster users found, please specify one of {:?}",
-        available_ids
-    ))]
-    SecretsUsersMultiple { available_ids: Vec<String> },
 }
 
 struct MyArns {
@@ -177,7 +129,7 @@ fn cluster_ids(db_clusters: &[DbCluster]) -> Vec<String> {
 fn my_cluster(
     requested_db_cluster_identifier: &Option<String>,
     db_clusters: &[DbCluster],
-) -> Result<DbCluster, Error> {
+) -> Result<DbCluster> {
     match requested_db_cluster_identifier {
         Some(requested_db_cluster_identifier) => {
             for db_cluster in db_clusters {
@@ -188,19 +140,21 @@ fn my_cluster(
                     }
                 }
             }
-            Err(Error::DBClusterNoMatch {
-                db_cluster_identifier: requested_db_cluster_identifier.to_owned(),
-                available_ids: cluster_ids(db_clusters),
-            })
+            Err(anyhow!(
+                "No cluster matched \"{}\", available ids are {:?}",
+                requested_db_cluster_identifier.to_owned(),
+                cluster_ids(db_clusters),
+            ))
         }
         None => {
             match db_clusters.len() {
                 // There is exactly one: go ahead and use it.
                 1 => Ok(db_clusters[0].to_owned()),
-                0 => Err(Error::DBClusterEmpty {}),
-                _ => Err(Error::DBClusterMultiple {
-                    available_ids: cluster_ids(db_clusters),
-                }),
+                0 => Err(anyhow!("No clusters found")),
+                _ => Err(anyhow!(
+                    "Multiple clusters found, please specify one of {:?}",
+                    cluster_ids(db_clusters)
+                )),
             }
         }
     }
@@ -241,7 +195,7 @@ fn my_secret(
     requested_db_cluster_resource_id: &str,
     requested_db_user_id: &Option<String>,
     secret_list: &[SecretListEntry],
-) -> Result<SecretListEntry, Error> {
+) -> Result<SecretListEntry> {
     let db_secrets = secrets_for_db(requested_db_cluster_resource_id, secret_list);
 
     match requested_db_user_id {
@@ -254,19 +208,21 @@ fn my_secret(
                     }
                 }
             }
-            Err(Error::SecretsUsersNoMatch {
-                db_user_id: requested_db_user_id.to_owned(),
-                available_ids: user_names(&db_secrets),
-            })
+            Err(anyhow!(
+                "No cluster user matched \"{}\", available users are {:?}",
+                requested_db_user_id.to_owned(),
+                user_names(&db_secrets),
+            ))
         }
         None => {
             match db_secrets.len() {
                 // There is exactly one: go ahead and use it.
                 1 => Ok(db_secrets[0].to_owned()),
-                0 => Err(Error::SecretsUsersEmpty {}),
-                _ => Err(Error::SecretsUsersMultiple {
-                    available_ids: user_names(&db_secrets),
-                }),
+                0 => Err(anyhow!("No cluster user secrets found")),
+                _ => Err(anyhow!(
+                    "Multiple cluster users found, please specify one of {:?}",
+                    user_names(&db_secrets),
+                )),
             }
         }
     }
@@ -276,7 +232,7 @@ async fn get_arns(
     aws_sdk_config: &SdkConfig,
     requested_db_cluster_identifier: &Option<String>,
     requested_user_id: &Option<String>,
-) -> Result<MyArns, Error> {
+) -> Result<MyArns> {
     let rds_client = aws_sdk_rds::Client::new(aws_sdk_config);
     let secrets_manager_client = aws_sdk_secretsmanager::Client::new(aws_sdk_config);
 
@@ -284,19 +240,19 @@ async fn get_arns(
         .describe_db_clusters()
         .max_records(100)
         .send()
-        .map_err(|e| Error::DBClusterLookup { source: e });
+        .map_err(|e| anyhow!("Failed to lookup clusters: {}", e));
     let fut2 = secrets_manager_client
         .list_secrets()
         .max_results(100)
         .send()
-        .map_err(|e| Error::SecretLookup { source: e });
+        .map_err(|e| anyhow!("Failed to lookup secrets: {}", e));
 
     let (db_cluster_message, list_secrets_response) = join!(fut1, fut2);
     info!("{:?}", db_cluster_message);
     info!("{:?}", list_secrets_response);
     let db_cluster = match db_cluster_message?.db_clusters {
         Some(db_clusters) => my_cluster(requested_db_cluster_identifier, &db_clusters)?,
-        None => return Err(Error::DBClusterLookupEmpty {}),
+        None => return Err(anyhow!("Failed to find any RDS clusters")),
     };
     let secret_list_entry = match list_secrets_response?.secret_list {
         Some(secret_list) => my_secret(
@@ -304,7 +260,7 @@ async fn get_arns(
             requested_user_id,
             &secret_list,
         )?,
-        None => return Err(Error::SecretNotFound {}),
+        None => return Err(anyhow!("Failed to find any secrets")),
     };
     Ok(MyArns {
         aws_secret_store_arn: secret_list_entry.arn.unwrap(),
@@ -312,7 +268,7 @@ async fn get_arns(
     })
 }
 
-fn csv_output(result: &ExecuteStatementOutput) -> Result<(), ExitFailure> {
+fn csv_output(result: &ExecuteStatementOutput) -> Result<()> {
     if result.number_of_records_updated > 0 || result.column_metadata.is_none() {
         println!(
             "number_of_records_updated: {}",
@@ -404,7 +360,7 @@ fn cook_response(result: &ExecuteStatementOutput) -> CookedResponse {
     }
 }
 
-fn cooked_output(result: &ExecuteStatementOutput) -> Result<(), ExitFailure> {
+fn cooked_output(result: &ExecuteStatementOutput) -> Result<()> {
     serde_json::to_writer_pretty(stdout(), &cook_response(result))?;
     // We'd like to write out a final newline. Ignore any failure to do so.
     let _result = stdout().write(b"\n");
@@ -429,14 +385,12 @@ async fn aws_sdk_config(args: &MyArgs) -> SdkConfig {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ExitFailure> {
+async fn main() -> Result<()> {
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
     let args = MyArgs::parse();
-    loggerv::Logger::new()
-        .output(&log::Level::Info, loggerv::Output::Stderr)
-        .output(&log::Level::Debug, loggerv::Output::Stderr)
-        .output(&log::Level::Trace, loggerv::Output::Stderr)
-        .verbosity(args.verbose as u64)
-        .init()?;
     let output_format = args.format;
     let config = aws_sdk_config(&args).await;
     let MyArns {
