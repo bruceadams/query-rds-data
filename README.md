@@ -6,29 +6,62 @@
 [![Github Release](https://img.shields.io/github/v/release/bruceadams/query-rds-data?logo=github)](https://github.com/bruceadams/query-rds-data/releases)
 [![Crates.io](https://img.shields.io/crates/v/query-rds-data?logo=rust)](https://crates.io/crates/query-rds-data)
 
-## Goal
-
 ## Installing
 
-Prebuilt binaries for several platforms are available under
-[Github releases](https://github.com/bruceadams/query-rds-data/releases).
+### Install prebuilt binaries via shell script
 
-On macOS, the prebuilt binary can be installed using [Homebrew](https://brew.sh).
-
-```bash
-$ brew tap bruceadams/utilities
-$ brew install query-rds-data
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-installer.sh | sh
 ```
 
-If you have the [Rust tool chain](https://rustup.rs/) installed,
-`cargo install query-rds-data` will work.
+### Install prebuilt binaries via powershell script
+
+```sh
+irm https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-installer.ps1 | iex
+```
+
+### Install prebuilt binaries into your npm project
+
+```sh
+npm install query-rds-data
+```
+
+or install and run the binary using `npx`
+
+```sh
+npx query-rds-data --help
+```
+
+### Install prebuilt binaries via Homebrew
+
+```sh
+brew install bruceadams/homebrew-utilities/query-rds-data
+```
+
+### Install prebuilt binaries via cargo binstall
+
+```sh
+cargo binstall query-rds-data
+```
+
+## Download
+
+|  File  | Platform | Checksum |
+|--------|----------|----------|
+| [query-rds-data-aarch64-apple-darwin.tar.xz](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-aarch64-apple-darwin.tar.xz) | macOS Apple Silicon | [checksum](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-aarch64-apple-darwin.tar.xz.sha256) |
+| [query-rds-data-x86_64-apple-darwin.tar.xz](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-apple-darwin.tar.xz) | macOS Intel | [checksum](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-apple-darwin.tar.xz.sha256) |
+| [query-rds-data-x86_64-pc-windows-msvc.zip](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-pc-windows-msvc.zip) | Windows x64 | [checksum](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-pc-windows-msvc.zip.sha256) |
+| [query-rds-data-x86_64-unknown-linux-gnu.tar.xz](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-unknown-linux-gnu.tar.xz) | Linux x64 | [checksum](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-unknown-linux-gnu.tar.xz.sha256) |
+| [query-rds-data-x86_64-unknown-linux-musl.tar.xz](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-unknown-linux-musl.tar.xz) | musl Linux x64 | [checksum](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-unknown-linux-musl.tar.xz.sha256) |
+| [query-rds-data-x86_64-pc-windows-msvc.msi](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-pc-windows-msvc.msi) | Windows x64 | [checksum](https://github.com/bruceadams/query-rds-data/releases/latest/download/query-rds-data-x86_64-pc-windows-msvc.msi.sha256) |
 
 ## Building
 
-This project is written in Rust. **The** way to install Rust is from
-[Rustup.rs](https://rustup.rs/). Once Rust is installed on your machine,
-running `cargo  build` in  the root  of this checkout should _just work_
-and produces a debug binary in `target/debug/query-rds-data`.
+This is a straightforward [Rust](https://www.rust-lang.org/)
+project using [Cargo](doc.rust-lang.org/cargo).
+After installing [Rust](https://www.rust-lang.org/)
+(I highly recommend using [Rustup](https://rustup.rs/)),
+`cargo build` should _just work_.
 
 ## Built-in help
 
@@ -36,45 +69,58 @@ and produces a debug binary in `target/debug/query-rds-data`.
 $ cargo build  # The first build takes longer, with more output
     Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 $ target/debug/query-rds-data --help
-query-rds-data 2.0.1
 Query AWS RDS Data from the command line
 
-USAGE:
-    query-rds-data [OPTIONS] <QUERY>
+Usage: query-rds-data [OPTIONS] <QUERY>
 
-ARGS:
-    <QUERY>    SQL query
+Arguments:
+  <QUERY>
+          SQL query
 
-OPTIONS:
-    -c, --db-cluster-identifier <CLUSTER_ID>
-            RDS cluster identifier [env: AWS_RDS_CLUSTER=]
+Options:
+  -p, --profile <PROFILE>
+          AWS source profile to use. This name references an entry in ~/.aws/config
 
-    -d, --database <DATABASE>
-            Database name [env: AWS_RDS_DATABASE=]
+          [env: AWS_PROFILE=]
 
-    -f, --format <FORMAT>
-            Output format [default: csv] [possible values: csv, json]
+  -r, --region <REGION>
+          AWS region to target
 
-    -h, --help
-            Print help information
+          [env: AWS_DEFAULT_REGION=]
+          [default: us-east-1]
 
-    -p, --profile <PROFILE>
-            AWS source profile to use. This name references an entry
-            in ~/.aws/config [env: AWS_PROFILE=]
+  -c, --db-cluster-identifier <CLUSTER_ID>
+          RDS cluster identifier
 
-    -r, --region <REGION>
-            AWS region to target [env: AWS_DEFAULT_REGION=] [default:
-            us-east-1]
+          [env: AWS_RDS_CLUSTER=]
 
-    -u, --db-user-identifier <USER_ID>
-            RDS user identifier (really the AWS secret identifier)
-            [env: AWS_RDS_USER=]
+  -u, --db-user-identifier <USER_ID>
+          RDS user identifier (really the AWS secret identifier)
 
-    -v, --verbose
-            Increase logging verbosity (-v, -vv, -vvv, etc)
+          [env: AWS_RDS_USER=]
 
-    -V, --version
-            Print version information
+  -f, --format <FORMAT>
+          Output format
+
+          [default: csv]
+
+          Possible values:
+          - csv:  CSV output, including a header line
+          - json: An array of JSON Objects, {"field_name": field_value, …}
+
+  -d, --database <DATABASE>
+          Database name
+
+          [env: AWS_RDS_DATABASE=]
+
+  -v, --verbose...
+          Increase logging verbosity (-v, -vv, -vvv, etc)
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
 ```
 
 ## Error messages
