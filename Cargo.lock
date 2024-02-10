@@ -1111,7 +1111,7 @@ dependencies = [
 
 [[package]]
 name = "query-rds-data"
-version = "3.0.1"
+version = "3.0.2"
 dependencies = [
  "aws-config",
  "aws-sdk-rds",
