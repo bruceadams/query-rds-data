@@ -22,12 +22,18 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 enum Format {
     /// CSV output, including a header line.
     Csv,
-    /// An array of JSON Objects, {"field_name": field_value, …}.
+    /// A JSON Object. For example:
+    /// {"numberOfRecordsUpdated": 0,
+    ///  "records": [{"id": 1,
+    ///               "name": "bruce",
+    ///               "amount": 0.05}]}
     Json,
 }
 
-/// You can set the environment variable `RUST_LOG` to
-/// adjust logging, for example `RUST_LOG=trace aws-caller-id`
+/// Query AWS RDS Data from the command line
+///
+/// You can set the environment variable `RUST_LOG` to adjust
+/// logging, for example `RUST_LOG=trace query-rds-data`.
 #[derive(Clone, Debug, Parser)]
 #[command(about, author, version)]
 struct MyArgs {

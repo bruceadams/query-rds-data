@@ -71,6 +71,9 @@ $ cargo build  # The first build takes longer, with more output
 $ target/debug/query-rds-data --help
 Query AWS RDS Data from the command line
 
+You can set the environment variable `RUST_LOG` to adjust
+logging, for example `RUST_LOG=trace query-rds-data`.
+
 Usage: query-rds-data [OPTIONS] <QUERY>
 
 Arguments:
@@ -79,15 +82,15 @@ Arguments:
 
 Options:
   -p, --profile <PROFILE>
-          AWS source profile to use. This name references an entry in ~/.aws/config
+          AWS source profile to use. This name references an
+          entry in ~/.aws/config
 
           [env: AWS_PROFILE=]
 
   -r, --region <REGION>
           AWS region to target
 
-          [env: AWS_DEFAULT_REGION=]
-          [default: us-east-1]
+          [env: AWS_REGION=]
 
   -c, --db-cluster-identifier <CLUSTER_ID>
           RDS cluster identifier
@@ -106,15 +109,14 @@ Options:
 
           Possible values:
           - csv:  CSV output, including a header line
-          - json: An array of JSON Objects, {"field_name": field_value, …}
+          - json: A JSON Object. For example:
+            {"numberOfRecordsUpdated": 0, "records": [{"id": 1,
+            "name": "bruce", "amount": 0.05}]}
 
   -d, --database <DATABASE>
           Database name
 
           [env: AWS_RDS_DATABASE=]
-
-  -v, --verbose...
-          Increase logging verbosity (-v, -vv, -vvv, etc)
 
   -h, --help
           Print help (see a summary with '-h')
