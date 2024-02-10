@@ -1,6 +1,6 @@
 [package]
 name = "query-rds-data"
-version = "2.0.2"
+version = "3.0.0"
 authors = ["Bruce Adams <bruce.adams@acm.org>"]
 edition = "2021"
 categories = ["database", "command-line-utilities"]
@@ -10,6 +10,12 @@ keywords = ["aws", "cli", "database", "rds", "sql"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/bruceadams/query-rds-data"
+
+[package.metadata.wix]
+upgrade-guid = "55B846C8-481D-4E72-897A-E48F6871134D"
+path-guid = "A8D6A69B-1F78-41EB-8C85-8D282EAF4112"
+license = false
+eula = false
 
 [dependencies]
 aws-config = "0.49.0"
@@ -36,3 +42,29 @@ version = "1.0.145"
 [dependencies.tokio]
 version = "1.21.2"
 features = ["macros", "rt-multi-thread"]
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.10.0"
+# CI backends to support
+ci = ["github"]
+# The installers to generate for each app
+installers = ["shell", "powershell", "npm", "homebrew", "msi"]
+# A GitHub repo to push Homebrew formulas to
+tap = "bruceadams/homebrew-utilities"
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl", "x86_64-pc-windows-msvc"]
+# The archive format to use for windows builds (defaults .zip)
+windows-archive = ".tar.gz"
+# The archive format to use for non-windows builds (defaults .tar.xz)
+unix-archive = ".tar.gz"
+# Publish jobs to run in CI
+publish-jobs = ["homebrew"]
+# Publish jobs to run in CI
+pr-run-mode = "plan"
