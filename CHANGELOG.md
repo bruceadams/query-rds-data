@@ -1,3 +1,7 @@
+# Version 4.0.1
+
+Unbreak building release artifacts!
+
 # Version 4.0.0
 
 - Upgrade to AWS SDK release (1.x) versions.

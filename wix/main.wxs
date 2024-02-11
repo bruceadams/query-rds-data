@@ -61,7 +61,7 @@
     <Product
         Id='*'
         Name='query-rds-data'
-        UpgradeCode='55B846C8-481D-4E72-897A-E48F6871134D'
+        UpgradeCode='64DEDA6E-4F29-4D84-89F1-5980100A2426'
         Manufacturer='Bruce Adams'
         Language='1033'
         Codepage='1252'
@@ -110,7 +110,7 @@
                     -->
 
                     <Directory Id='Bin' Name='bin'>
-                        <Component Id='Path' Guid='A8D6A69B-1F78-41EB-8C85-8D282EAF4112' KeyPath='yes'>
+                        <Component Id='Path' Guid='075BF4CA-796D-4C0B-9581-16ED1E63B843' KeyPath='yes'>
                             <Environment
                                 Id='PATH'
                                 Name='PATH'
